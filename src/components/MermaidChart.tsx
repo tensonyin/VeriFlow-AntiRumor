@@ -94,8 +94,8 @@ export default function MermaidChart({ chart }: { chart: string }) {
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  const handleZoomIn = useCallback(() => setZoom(z => Math.min(z + 0.2, 2.5)), []);
-  const handleZoomOut = useCallback(() => setZoom(z => Math.max(z - 0.2, 0.4)), []);
+  const handleZoomIn = useCallback(() => setZoom(z => Math.min(z + 0.5, 5.0)), []);
+  const handleZoomOut = useCallback(() => setZoom(z => Math.max(z - 0.2, 0.2)), []);
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -127,9 +127,9 @@ export default function MermaidChart({ chart }: { chart: string }) {
   if (!chart) return null;
 
   return (
-    <div className="relative w-full my-6">
+    <div className="relative w-full my-6 flex justify-center">
       {/* Zoom controls */}
-      <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-lg border border-[#d0ccc4]/40 p-0.5 shadow-sm">
+      <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-lg border border-[#d0ccc4]/40 p-0.5 shadow-sm">
         <button
           onClick={handleZoomOut}
           className="p-1.5 rounded hover:bg-[#FAF8F5] transition-colors"
@@ -151,12 +151,29 @@ export default function MermaidChart({ chart }: { chart: string }) {
         >
           <ZoomIn className="w-3.5 h-3.5 text-[#2C2C2C]/60" />
         </button>
+        <button
+          onClick={() => {
+             // Fake maximize/fullscreen toggle
+             const el = iframeRef.current?.parentElement?.parentElement?.parentElement;
+             if (el) {
+                if (!document.fullscreenElement) {
+                   el.requestFullscreen().catch(() => {});
+                } else {
+                   document.exitFullscreen();
+                }
+             }
+          }}
+          className="p-1.5 rounded hover:bg-[#FAF8F5] transition-colors"
+          title="全屏 (Fullscreen)"
+        >
+          <Maximize2 className="w-3.5 h-3.5 text-[#2C2C2C]/60" />
+        </button>
       </div>
 
       {/* Chart container */}
       <div 
-        className="w-full overflow-hidden rounded-lg border border-[#d0ccc4]/20 bg-white/30"
-        style={{ maxHeight: '70vh' }}
+        className="w-[100vw] sm:w-full overflow-hidden bg-white/30 relative left-1/2 -translate-x-1/2 sm:static sm:translate-x-0"
+        style={{ maxHeight: '85vh' }}
       >
         <div
           onMouseDown={handleMouseDown}
