@@ -2,7 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
-import FormData from 'form-data';
+import { execFile } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
@@ -20,6 +22,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is running!' });
 });
 
+// Proxy endpoint to bypass CORS for image saving
+app.get('/api/proxy-image', async (req, res) => {
+  const imageUrl = req.query.url as string;
+  if (!imageUrl) return res.status(400).send('No URL provided');
+  try {
+    const fetchRes = await fetch(imageUrl);
+    const buffer = await fetchRes.arrayBuffer();
+    res.set('Content-Type', fetchRes.headers.get('content-type') || 'image/jpeg');
+    res.send(Buffer.from(buffer));
+  } catch (e) {
+    res.status(500).send('Error proxying image');
+  }
+});
+
 // Main endpoint to handle analysis
 app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
   try {
@@ -32,26 +48,22 @@ app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
     if (files && files.length > 0) {
       for (const file of files) {
         const formData = new FormData();
-        formData.append('file', file.buffer, {
-          filename: file.originalname,
-          contentType: file.mimetype,
-        });
+        const blob = new Blob([file.buffer], { type: file.mimetype });
+        formData.append('file', blob, file.originalname);
         formData.append('user', 'web-user');
 
-        const uploadRes = await fetch('https://api.dify.ai/v1/files', {
+        const uploadRes = await fetch('https://api.dify.ai/v1/files/upload', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${DIFY_API_KEY}`,
-            // node-fetch with form-data automatically sets the boundary
-            ...formData.getHeaders(),
           },
-          body: formData as any,
+          body: formData,
         });
 
         if (!uploadRes.ok) {
           const err = await uploadRes.text();
           console.error('File upload failed:', err);
-          throw new Error('Failed to upload file to Dify');
+          throw new Error(`Failed to upload file to Dify: ${err}`);
         }
 
         const uploadData = await uploadRes.json();
@@ -71,10 +83,12 @@ app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
     }
 
     // 2. Call Dify Workflow Run API
+    const isElderlyModeStr = req.body.isElderlyMode === 'true' ? 'true' : 'false';
     const workflowPayload = {
       inputs: {
         upload_files: difyFileObjects,
-        user_text: query
+        user_text: query,
+        isElderlyMode: isElderlyModeStr
       },
       response_mode: "streaming",
       user: "web-user"
@@ -108,6 +122,9 @@ app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
     if (runRes.body) {
       // For Node 18+ native fetch, body is a ReadableStream
       const reader = runRes.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
       const pump = async () => {
         while (true) {
           const { done, value } = await reader.read();
@@ -115,7 +132,38 @@ app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
             res.end();
             break;
           }
+          
           res.write(value);
+
+          // Decode and parse for terminal logging
+          buffer += decoder.decode(value, { stream: true });
+          let lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // keep the incomplete line
+
+          for (let line of lines) {
+            line = line.trim();
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                if (data.event === 'node_finished' && data.data) {
+                   const title = data.data.title || data.data.node_type || "Unknown Node";
+                   const outputText = data.data.outputs?.text;
+                   const outputAll = data.data.outputs;
+                   
+                   console.log(`\n======================================================`);
+                   console.log(`🟢 [NODE FINISHED]: ${title}`);
+                   if (outputText) {
+                     console.log(`[TEXT OUTPUT]:\n${outputText}`);
+                   } else {
+                     console.log(`[OUTPUT DATA]:`, JSON.stringify(outputAll, null, 2));
+                   }
+                   console.log(`======================================================\n`);
+                }
+              } catch(e) {
+                // Ignore parse errors for incomplete JSON
+              }
+            }
+          }
         }
       };
       pump().catch(err => {
@@ -125,11 +173,51 @@ app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
     } else {
       res.end();
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in analysis:', error);
-    res.status(500).json({ success: false, error: 'Internal Server Error' });
+    res.status(500).json({ success: false, error: 'Internal Server Error', details: error.message || String(error) });
   }
 });
+
+// TTS endpoint using local edge-tts
+app.post('/api/tts', async (req, res) => {
+  try {
+    const { text, voice } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'No text provided' });
+    }
+
+    const voiceName = voice || 'zh-CN-XiaoxiaoNeural';
+    const tempFileName = `tts_${Date.now()}_${Math.floor(Math.random() * 1000)}.mp3`;
+    const tempFilePath = path.join(__dirname, '..', tempFileName);
+
+    // Securely invoke edge-tts CLI tool
+    execFile('edge-tts', [
+      '--voice', voiceName,
+      '--text', text,
+      '--write-media', tempFilePath
+    ], (error, stdout, stderr) => {
+      if (error) {
+        console.error('edge-tts execution failed:', error, stderr);
+        return res.status(500).json({ error: 'TTS generation failed', details: error.message });
+      }
+
+      res.sendFile(tempFilePath, (err) => {
+        // Clean up temp audio file
+        fs.unlink(tempFilePath, (unlinkErr) => {
+          if (unlinkErr) console.error('Failed to unlink temporary TTS file:', unlinkErr);
+        });
+        if (err) {
+          console.error('Error sending TTS file:', err);
+        }
+      });
+    });
+  } catch (err: any) {
+    console.error('TTS endpoint error:', err);
+    res.status(500).json({ error: 'Internal Server Error in TTS endpoint', details: err.message });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

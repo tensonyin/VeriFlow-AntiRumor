@@ -17,31 +17,12 @@ export default function EvidenceSection({ chart, sources, isElderlyMode = false 
       <div className="flex items-center mb-8 mt-12">
         <div className="flex-1 h-px bg-[#d0ccc4]"></div>
         <div className={`px-4 ${isElderlyMode ? 'text-lg font-bold' : 'text-xs font-mono tracking-widest uppercase'} text-[#2C2C2C] opacity-40`}>
-          证据链 / 核查时间线
+          证据链 / 核心证据
         </div>
         <div className="flex-1 h-px bg-[#d0ccc4]"></div>
       </div>
 
-      {isElderlyMode ? (
-         <div className="w-full bg-white p-8 rounded-2xl border-2 border-black/10 shadow-sm text-center">
-            <h3 className="text-xl font-bold mb-4 text-black">极简连环画大事件时间轴</h3>
-            <p className="text-[#2C2C2C]/60">此区域将展示后端返回的图片/时间线动画。</p>
-            <div className="mt-6 flex flex-col gap-4 text-left">
-               <div className="flex gap-4 items-center bg-[#FAF8F5] p-4 rounded-xl">
-                  <div className="w-8 h-8 rounded-full bg-[#00B86B] text-white flex items-center justify-center font-bold">1</div>
-                  <div className="text-lg">已前往全网检索该传言...</div>
-               </div>
-               <div className="flex gap-4 items-center bg-[#FAF8F5] p-4 rounded-xl">
-                  <div className="w-8 h-8 rounded-full bg-[#FFCC00] text-black flex items-center justify-center font-bold">2</div>
-                  <div className="text-lg">提取视频原画面，未发现修改痕迹...</div>
-               </div>
-               <div className="flex gap-4 items-center bg-[#FAF8F5] p-4 rounded-xl">
-                  <div className="w-8 h-8 rounded-full bg-[#FF3B30] text-white flex items-center justify-center font-bold">3</div>
-                  <div className="text-lg">但原话已被掐头去尾，改变了原本含义！</div>
-               </div>
-            </div>
-         </div>
-      ) : (
+      {!isElderlyMode && chart && (
         <MermaidChart chart={chart} />
       )}
 

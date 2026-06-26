@@ -1,20 +1,132 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 谣言终结者：基于多源异构对抗博弈的多模态事实核查系统 (VeriFlow-AntiRumor)
 
-# Run and deploy your AI Studio app
+面向 AI 时代多源虚假信息的智能事实核查与适老化辟谣系统。本项目在第九届全国青少年人工智能创新挑战赛中用于“AI智能体设计开发专项赛”路演汇报。
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/bee724f4-38cf-4078-8761-4abb78d33e99
+## 🚀 项目简介 (Overview)
 
-## Run Locally
+在 AIGC 浪潮下，虚假信息以前所未有的速度肆虐，传统搜索引擎和通用大模型常常因为“事实幻觉”给出错误回答。数字银发族由于视力退化、不习惯复杂的手机交互，极易成为网络谣言的受害者。
 
-**Prerequisites:**  Node.js
+**《谣言终结者》**致力于通过**工作流约束**、**智能体对抗博弈**与**深度适老化设计**，重新构建人机协同的数字信任边界。系统提供 Web 端和 DFRobot 行空板 (Unihiker) 物理智能硬件终端，为老年人家庭筑起一道坚实的信息安全防线。
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## ✨ 核心特性 (Key Features)
+
+1. **25节点对抗博弈工作流**：
+   在 Dify 平台编排 25 个微节点，支持“红蓝对抗博弈”。红方智能体专注寻找证实论据，蓝方智能体专注寻找逻辑漏洞和反面材料，最后由裁判长智能体进行中立裁决，实现核查流程的“白盒化”与“可信度”。
+2. **跨语言多源实时检索**：
+   系统不依赖大模型的静态离线知识，而是通过高性能搜索引擎 API (Tavily Search) 实时检索。通过翻译智能体，将中文谣言自动翻译并拓展出英文关键词进行全球范围的权威检索，秒级召回中英文前沿学术文献与权威辟谣报道。
+3. **安心双模无缝切换**：
+   - **普通模式**：科技感设计，流式展示 AI 探员的“思维风暴”手风琴日志。
+   - **长辈模式 (适老化)**：基础字号放大 1.5 倍，行高扩大至 1.6 倍，高对比度色彩。包含打字机打字声（加载中）、沉稳印章盖章声（完成）等实体交互反馈，消除老年人面对电子屏时的焦虑感。
+4. **Mermaid 流程图手势交互**：
+   自动输出可视化的推导逻辑链。支持用户在前端网页上进行鼠标/手指捏合缩放（Zoom）和随意拖拽（Drag），解决在小屏幕和大字号下流程图文字重叠和边界遮挡的顽疾。
+5. **微信朋友圈“辟谣小票”与 LaTeX 大字报**：
+   一键生成极具生活气息的“辟谣消费小票”与 LaTeX 顺口溜大字报。自动接入图片同源代理，规避 Canvas 截图跨域限制，让老年人能够一键保存并随手转发至家族微信群，有效阻断谣言的二次裂变。
+6. **行空板物理硬件嵌入 (Unihiker)**：
+   适配 DFRobot 行空板，支持长辈通过物理按键 A 录音求助，板载屏幕实时同步 Dify 节点状态。通过 edge-tts 语音合成及蜂鸣器，为视力不佳的老人提供纯实体化的事实核查声音播报。
+
+---
+
+## 🛠️ 技术栈 (Tech Stack)
+
+*   **前端 Web**：React 19 + TypeScript + Vite + Tailwind CSS 4 + Motion (微动画) + Mermaid.js
+*   **后端 API**：Node.js + Express (中转代理与 SSE 流式推送) + Multer (文件处理) + Edge-TTS (本地语音合成)
+*   **智能体引擎**：Dify Workflow API (25节点红蓝对抗工作流) + Tavily Search API
+*   **硬件终端**：Python + Unihiker GUI 库 + PinPong 硬件控制库 + Tkinter (高保真 PC 模拟器)
+
+---
+
+## 📁 项目结构说明 (Folder Structure)
+
+```text
+├── assets/                 # 静态资源文件（包括音频、图片等）
+├── server/
+│   └── index.ts            # Node.js 后端服务（处理跨域代理、SSE流转发、TTS生成）
+├── src/
+│   ├── components/         # React 组件库
+│   │   ├── MermaidChart.tsx      # Mermaid 流程图拖拽缩放组件
+│   │   ├── ResultTicket.tsx       # 辟谣小票及截图卡片组件
+│   │   ├── ThinkingWorkflow.tsx   # 流式思维风暴日志组件
+│   │   └── GlassIcons.tsx         # 长辈模式超大模态输入按钮
+│   ├── App.tsx             # 前端主入口
+│   ├── index.css           # 全局样式系统
+│   └── main.tsx            # React 挂载点
+├── unihiker_app.py         # 行空板物理终端程序 (含PC仿真模拟)
+├── config.json             # 硬件/API配置文件
+├── README.md               # 项目快速启动与演示文档
+├── PROJECT_PROCESS.md      # 项目开发纪实与技术困难解决方案
+└── 谣言终结者_比赛汇报PPT.md # 比赛路演汇报 PPT 大纲
+```
+
+---
+
+## ⚙️ 本地开发与部署指南 (Local Setup & Run)
+
+### 1. 运行环境要求
+*   Node.js (v18 或更高版本)
+*   Python 3 (用于运行行空板或 PC 模拟器)
+*   安装命令行语音工具：`pip install requests edge-tts flask` (若需要使用本地 TTS 语音生成功能，请确保系统已安装并配置 `edge-tts` 到系统环境变量)
+
+### 2. 依赖安装
+在项目根目录下，执行以下命令安装前后端依赖：
+```bash
+npm install
+```
+
+### 3. 配置环境变量
+在项目根目录下创建一个 `.env` 文件，内容如下：
+```env
+PORT=3001
+# 配置本地开发环境的环境变量（如需要）
+```
+并在本地 `config.json` 文件中配置您的 Dify API Key：
+```json
+{
+  "dify_api_key": "app-CRjOm6lfjIuFjY0Xwncpzg0M",
+  "dify_base_url": "https://api.dify.ai/v1",
+  "max_record_seconds": 30,
+  "tts_voice": "zh-CN-XiaoxiaoNeural"
+}
+```
+
+### 4. 启动开发服务器
+使用以下命令将**同时启动** Express 后端接口（端口 3001）和 Vite 前端服务（端口 3000）：
+```bash
+npm run dev
+```
+启动成功后，在浏览器中打开 `http://localhost:3000` 即可访问网页端。
+
+---
+
+## 📟 行空板物理终端与模拟器运行 (Unihiker App)
+
+### 1. 在行空板上部署
+1. 将行空板通过 USB 线连接至电脑，通过 SCP 或行空板网页文件管理器将项目根目录下的 `unihiker_app.py` 和 `config.json` 拷贝到板子上的 `/root/` 目录下。
+2. 确保板子已成功连接 Wi-Fi，并且能正常访问外网。
+3. 在板子上运行以下命令启动程序：
+   ```bash
+   python unihiker_app.py
+   ```
+   程序会自动检查并静默安装缺失的 `requests`、`edge-tts` 等依赖包。
+
+### 2. 在普通电脑上启动高保真模拟器 (PC Simulation)
+如果您的电脑上没有连接行空板硬件，直接在终端中运行 `unihiker_app.py`。程序检测到无硬件库时，会自动启动基于 Tkinter 的 240x320 PC 高保真模拟器：
+```bash
+python unihiker_app.py
+```
+*   **按键 A (录音)**：在模拟器界面上点击“A键”或按下键盘上的 **A** 键。
+*   **按键 B (切换模式)**：在模拟器界面上点击“B键”或按下键盘上的 **B** 键，可无缝切换普通模式和长辈版高对比度蓝黄配色模式。
+
+---
+
+## 🎓 比赛快捷路演演示 (ctrl+alt+t 演示模式)
+
+为了让评委老师在无网络或无 Token 消耗的情况下快速体验本系统所有的交互细节（尤其是长辈模式、打字机打字特效、盖章物理反馈、小票截屏分享），我们在前端中预留了**“快速路演通道”**：
+
+1. 打开网页 `http://localhost:3000`。
+2. 保持键盘处于英文状态，同时按下 **`Ctrl + Alt + T`** 组合键。
+3. 系统将立即自动模拟工作流状态，展现“思维风暴”的流式动画，并在 3 秒后自动弹出高保真测试分析小票。
+4. 在该小票界面，您可以畅快展示一键切换长辈大字报、缩放拖拽 Mermaid 逻辑图、以及点击“生成分享卡片”并进行截屏保存的全部功能！

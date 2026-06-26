@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap");
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -66,3 +67,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(44, 44, 44, 0.2);
 }
+
+/* Elderly Mode accessibility overrides */
+.elderly-mode {
+  font-size: 1.15rem;
+}
+
+.elderly-mode p,
+.elderly-mode span:not(.katex):not(.katex *),
+.elderly-mode li,
+.elderly-mode text,
+.elderly-mode div:not(.receipt):not(.sawtooth-top):not(.sawtooth-bottom):not(.katex):not(.katex *) {
+  color: #000000 !important;
+}
+
+.elderly-mode h1,
+.elderly-mode h2,
+.elderly-mode h3,
+.elderly-mode h4,
+.elderly-mode h5,
+.elderly-mode h6 {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+.elderly-mode .receipt {
+  border: 3px solid #000000 !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15) !important;
+}
+

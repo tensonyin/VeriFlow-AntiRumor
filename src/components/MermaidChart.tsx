@@ -1,11 +1,21 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Minimize2 } from 'lucide-react';
 
 export default function MermaidChart({ chart }: { chart: string }) {
   const [srcDoc, setSrcDoc] = useState('');
-  const [iframeHeight, setIframeHeight] = useState(400);
-  const [zoom, setZoom] = useState(1);
+  const [iframeHeight, setIframeHeight] = useState(500);
+  const [zoom, setZoom] = useState(1.0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   useEffect(() => {
     if (!chart) return;
@@ -22,7 +32,7 @@ export default function MermaidChart({ chart }: { chart: string }) {
             padding: 16px;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
+            align-items: center;
             background: transparent;
             font-family: 'Inter', sans-serif;
             overflow: visible;
@@ -34,7 +44,9 @@ export default function MermaidChart({ chart }: { chart: string }) {
           }
           .mermaid svg {
             max-width: 100%;
+            max-height: 95vh;
             height: auto !important;
+            width: auto !important;
           }
         </style>
         <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"><\/script>
@@ -102,18 +114,17 @@ export default function MermaidChart({ chart }: { chart: string }) {
 
   // Reset position when zoom resets
   const handleZoomReset = useCallback(() => {
-    setZoom(1);
+    setZoom(1.0);
     setPosition({ x: 0, y: 0 });
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoom <= 1) return; // Only allow drag when zoomed
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || zoom <= 1) return;
+    if (!isDragging) return;
     setPosition({
       x: e.clientX - dragStart.x,
       y: e.clientY - dragStart.y
@@ -127,7 +138,10 @@ export default function MermaidChart({ chart }: { chart: string }) {
   if (!chart) return null;
 
   return (
-    <div className="relative w-full my-6 flex justify-center">
+    <div 
+      ref={containerRef} 
+      className={`relative w-full flex justify-center ${isFullscreen ? 'bg-[#FAF8F5] h-screen items-center' : 'my-6'}`}
+    >
       {/* Zoom controls */}
       <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-white/70 backdrop-blur-sm rounded-lg border border-[#d0ccc4]/40 p-0.5 shadow-sm">
         <button
@@ -153,8 +167,7 @@ export default function MermaidChart({ chart }: { chart: string }) {
         </button>
         <button
           onClick={() => {
-             // Fake maximize/fullscreen toggle
-             const el = iframeRef.current?.parentElement?.parentElement?.parentElement;
+             const el = containerRef.current;
              if (el) {
                 if (!document.fullscreenElement) {
                    el.requestFullscreen().catch(() => {});
@@ -164,16 +177,16 @@ export default function MermaidChart({ chart }: { chart: string }) {
              }
           }}
           className="p-1.5 rounded hover:bg-[#FAF8F5] transition-colors"
-          title="全屏 (Fullscreen)"
+          title={isFullscreen ? "退出全屏 (Exit fullscreen)" : "全屏 (Fullscreen)"}
         >
-          <Maximize2 className="w-3.5 h-3.5 text-[#2C2C2C]/60" />
+          {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-[#2C2C2C]/60" /> : <Maximize2 className="w-3.5 h-3.5 text-[#2C2C2C]/60" />}
         </button>
       </div>
 
       {/* Chart container */}
       <div 
-        className="w-[100vw] sm:w-full overflow-hidden bg-white/30 relative left-1/2 -translate-x-1/2 sm:static sm:translate-x-0"
-        style={{ maxHeight: '85vh' }}
+        className={`overflow-hidden relative left-1/2 -translate-x-1/2 sm:static sm:translate-x-0 flex items-center justify-center w-[100vw] sm:w-full bg-transparent`}
+        style={{ height: isFullscreen ? '100vh' : `${Math.min(iframeHeight, 700)}px` }}
       >
         <div
           onMouseDown={handleMouseDown}
@@ -184,8 +197,12 @@ export default function MermaidChart({ chart }: { chart: string }) {
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
             transformOrigin: 'center center',
             width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             transition: isDragging ? 'none' : 'transform 0.2s ease',
-            cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            cursor: isDragging ? 'grabbing' : 'grab',
           }}
         >
           <iframe
@@ -193,9 +210,9 @@ export default function MermaidChart({ chart }: { chart: string }) {
             srcDoc={srcDoc}
             title="Mermaid Chart"
             className="w-full border-none bg-transparent pointer-events-none"
-            scrolling="no"
             style={{
-              height: `${iframeHeight}px`,
+              height: '100%',
+              width: '100%',
               colorScheme: 'auto',
               display: 'block',
             }}

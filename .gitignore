@@ -6,3 +6,15 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Python
+__pycache__/
+*.pyc
+
+# Media & temp files
+*.mp3
+*.wav
+fact_check_logs/
+
+# Binary executables
+*.exe

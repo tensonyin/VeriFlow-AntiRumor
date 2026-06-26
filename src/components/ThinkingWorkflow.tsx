@@ -14,7 +14,7 @@ export interface WorkflowStep {
   details: string[];
 }
 
-export default function ThinkingWorkflow({ steps, isFinished = false }: { steps: WorkflowStep[], isFinished?: boolean }) {
+export default function ThinkingWorkflow({ steps, isFinished = false, isElderlyMode = false }: { steps: WorkflowStep[], isFinished?: boolean, isElderlyMode?: boolean }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   // Track which node we last auto-expanded so we don't re-trigger on the same node
   const lastAutoExpandedRef = useRef<string | null>(null);
@@ -27,13 +27,14 @@ export default function ThinkingWorkflow({ steps, isFinished = false }: { steps:
     const latestDone = doneSteps.length > 0 ? doneSteps[doneSteps.length - 1] : null;
 
     if (latestDone && latestDone.id !== lastAutoExpandedRef.current) {
-      // A new node just completed — auto-expand it
+      // A new node just completed — auto-expand it without closing others
       lastAutoExpandedRef.current = latestDone.id;
-      setExpandedIds(prev => {
-        const next = new Set(prev);
-        next.add(latestDone.id);
-        return next;
-      });
+      setExpandedIds(prev => new Set(prev).add(latestDone.id));
+      
+      // Auto-scroll the window to the bottom when a new node expands
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 100);
     }
   }, [steps, isFinished]);
 
@@ -58,20 +59,26 @@ export default function ThinkingWorkflow({ steps, isFinished = false }: { steps:
         {/* Continuous Timeline line */}
         <div className="absolute left-[15px] top-4 bottom-8 w-px bg-[#d0ccc4]/50 z-0"></div>
 
-        <AnimatePresence>
+        <motion.div layout className="relative z-10 w-full">
+          <AnimatePresence initial={false}>
           {steps.map((step, index) => {
-            const hasContent = step.status === "done" && step.details.length > 0 && !!step.details[0];
-            const isExpanded = expandedIds.has(step.id);
+            const hasContent = !isElderlyMode && step.status === "done" && step.details.length > 0 && !!step.details[0];
+            const isExpanded = !isElderlyMode && expandedIds.has(step.id);
+            
+            // Extract Chinese portion of the title if in elderly mode
+            const displayTitle = isElderlyMode ? step.title.replace(/[a-zA-Z\s_-]+$/, '').trim() : step.title;
             
             return (
               <motion.div
+                layout
                 key={step.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="relative z-10 flex flex-col mb-4"
               >
-                <div 
+                <motion.div 
+                  layout="position"
                   className={`flex items-start gap-4 ${
                     hasContent
                       ? "cursor-pointer hover:opacity-80"
@@ -92,8 +99,8 @@ export default function ThinkingWorkflow({ steps, isFinished = false }: { steps:
 
                   {/* Title & Chevron */}
                   <div className={`flex-1 flex items-center pt-1 transition-opacity duration-300 ${step.status === "pending" ? "opacity-30" : "opacity-90"}`}>
-                    <span className="text-sm font-medium tracking-wide text-[#2C2C2C]">
-                      {step.title}
+                    <span className={`${isElderlyMode ? 'text-lg font-bold' : 'text-sm font-medium'} tracking-wide text-[#2C2C2C]`}>
+                      {displayTitle}
                     </span>
                     {hasContent && (
                       <ChevronRight 
@@ -104,19 +111,20 @@ export default function ThinkingWorkflow({ steps, isFinished = false }: { steps:
                       <Loader2 className="w-3.5 h-3.5 ml-2 opacity-40 animate-spin" />
                     )}
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Collapsible Details — only for done nodes with content */}
-                <AnimatePresence>
+                <AnimatePresence initial={false}>
                   {isExpanded && step.status === "done" && (
                     <motion.div
+                      layout
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                      className="overflow-hidden ml-[46px]"
+                      style={{ overflow: "hidden" }}
                     >
-                      <div className="py-3 px-4 mt-2 bg-white/40 border border-[#d0ccc4]/30 rounded-lg backdrop-blur-sm">
+                      <div className="py-3 px-4 mt-2 bg-white/40 border border-[#d0ccc4]/30 rounded-lg backdrop-blur-sm max-h-[40vh] overflow-y-auto custom-scrollbar">
                         <div className="text-xs text-[#2C2C2C]/80 leading-relaxed prose prose-xs prose-stone max-w-none">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
@@ -149,7 +157,8 @@ export default function ThinkingWorkflow({ steps, isFinished = false }: { steps:
               </motion.div>
             );
           })}
-        </AnimatePresence>
+          </AnimatePresence>
+        </motion.div>
       </div>
     </div>
   );
