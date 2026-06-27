@@ -221,6 +221,19 @@ app.post('/api/tts', async (req, res) => {
 });
 
 
+// Serve static files from the React frontend build directory
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Serve index.html for any other routes (supports SPA client-side routing)
+app.get('*', (req, res) => {
+  const indexPage = path.join(__dirname, '../dist/index.html');
+  if (fs.existsSync(indexPage)) {
+    res.sendFile(indexPage);
+  } else {
+    res.status(404).send('Frontend not built. Run "npm run build" first.');
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
