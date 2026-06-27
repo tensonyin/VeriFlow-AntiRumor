@@ -671,8 +671,8 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             
             <div className="text-center border-b border-dashed border-[#d0ccc4] pb-6 mb-6 relative">
               <h2 className={`${isElderlyMode ? 'text-2xl' : 'text-lg'} font-bold tracking-widest uppercase mb-1 ${isElderlyMode ? 'opacity-100 text-black' : 'opacity-80'}`}>真相核查小票</h2>
-              <p className="text-xs opacity-50">系统编号 {Math.floor(Math.random() * 899999 + 100000)}</p>
-              <p className="text-xs opacity-50">{result.timestamp}</p>
+              <p className="text-xs text-black/65">系统编号 {Math.floor(Math.random() * 899999 + 100000)}</p>
+              <p className="text-xs text-black/65">{result.timestamp}</p>
               
                {/* 盖章动效 / Stamp Animation Moved to Top */}
                <motion.div 
@@ -703,11 +703,11 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
 
             <div className="space-y-6 mb-12 leading-relaxed">
               <div className={isElderlyMode ? "opacity-100 font-bold" : "opacity-90"}>
-                <span className="text-xs opacity-50 block mb-1">传言原文 / 问题：</span>
+                <span className="text-xs text-black/65 block mb-1">传言原文 / 问题：</span>
                 "{result.sourceText}"
               </div>
               <div className={`pl-4 border-l border-[#d0ccc4] ${isElderlyMode ? 'opacity-100' : 'opacity-90'} markdown-body prose ${isElderlyMode ? 'prose-lg' : 'prose-sm'} prose-stone max-w-none break-all`}>
-                <span className="text-xs opacity-50 block mb-2 font-mono tracking-widest uppercase">核查过程与结论：</span>
+                <span className="text-xs text-black/65 block mb-2 font-mono tracking-widest uppercase">核查过程与结论：</span>
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -738,7 +738,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               className="border-t border-dashed border-[#d0ccc4] pt-6 flex justify-between items-end relative min-h-[60px]"
               style={{ perspective: "800px" }}
             >
-               <div className="text-xs opacity-40">
+               <div className="text-xs text-black/60 font-medium">
                   [ 报告完毕 ]
                </div>
             </div>
@@ -749,7 +749,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             <div className="mt-8 w-full max-w-4xl mx-auto px-4">
               <div className="flex items-center mb-6">
                 <div className="flex-1 h-px bg-[#d0ccc4]"></div>
-                <div className={`px-4 ${isElderlyMode ? 'text-lg font-bold' : 'text-xs font-mono tracking-widest uppercase'} text-[#2C2C2C] opacity-40`}>
+                <div className={`px-4 ${isElderlyMode ? 'text-lg font-bold' : 'text-xs font-mono tracking-widest uppercase'} text-[#2C2C2C] opacity-65`}>
                   逻辑链路图
                 </div>
                 <div className="flex-1 h-px bg-[#d0ccc4]"></div>
@@ -863,7 +863,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               <p className="text-sm font-bold text-black/80">
                 📱 手机端：长按图片，选择「保存到相册」或「发送给朋友」
               </p>
-              <p className="text-xs text-black/50">
+              <p className="text-xs text-black/70">
                 💻 电脑端：鼠标右键选择「图片另存为」保存到本地
               </p>
             </div>
@@ -939,7 +939,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
                 <p className="text-sm font-bold text-black/80">
                   🏮 大字报已生成！特别针对长辈视力优化，字大易读。
                 </p>
-                <p className="text-xs text-black/50">
+                <p className="text-xs text-black/70">
                   点击下方按钮可直接保存到相册、复制或发送给家人。
                 </p>
               </div>
