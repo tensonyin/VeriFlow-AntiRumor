@@ -166,6 +166,8 @@ const statusText = {
 
 export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode = false, mermaidChart }: { result: AnalysisResult, onReviewWorkflow?: () => void, isElderlyMode?: boolean, mermaidChart?: string }) {
   const ticketRef = useRef<HTMLDivElement>(null);
+  const shareImageModalRef = useRef<HTMLDivElement>(null);
+  const posterModalRef = useRef<HTMLDivElement>(null);
   
   const statusColors = isElderlyMode ? elderlyStatusColors : originalStatusColors;
 
@@ -185,6 +187,90 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   const [canShareNativePoster, setCanShareNativePoster] = useState(false);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
+
+  // Focus trap and accessibility control for Share Image Modal
+  useEffect(() => {
+    if (!shareImageUrl) return;
+    const modal = shareImageModalRef.current;
+    if (!modal) return;
+
+    // Focus first focusable element
+    const focusable = modal.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length > 0) {
+      (focusable[0] as HTMLElement).focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShareImageUrl(null);
+        return;
+      }
+      if (e.key === 'Tab') {
+        const focusableEls = modal.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+        if (focusableEls.length > 0) {
+          const first = focusableEls[0] as HTMLElement;
+          const last = focusableEls[focusableEls.length - 1] as HTMLElement;
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              last.focus();
+              e.preventDefault();
+            }
+          } else {
+            if (document.activeElement === last) {
+              first.focus();
+              e.preventDefault();
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [shareImageUrl]);
+
+  // Focus trap and accessibility control for LaTeX Poster Modal
+  useEffect(() => {
+    if (!isPosterModalOpen) return;
+    const modal = posterModalRef.current;
+    if (!modal) return;
+
+    // Focus first focusable element
+    const focusable = modal.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length > 0) {
+      (focusable[0] as HTMLElement).focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsPosterModalOpen(false);
+        setPosterImageUrl(null);
+        setPosterImageBlob(null);
+        return;
+      }
+      if (e.key === 'Tab') {
+        const focusableEls = modal.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+        if (focusableEls.length > 0) {
+          const first = focusableEls[0] as HTMLElement;
+          const last = focusableEls[focusableEls.length - 1] as HTMLElement;
+          if (e.shiftKey) {
+            if (document.activeElement === first) {
+              last.focus();
+              e.preventDefault();
+            }
+          } else {
+            if (document.activeElement === last) {
+              first.focus();
+              e.preventDefault();
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPosterModalOpen]);
 
   // Generate poster image blob dynamically on demand
   const generatePosterImage = async (): Promise<Blob | null> => {
@@ -751,11 +837,12 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       {/* Share Image Modal Overlay */}
       {shareImageUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-          <div className="bg-[#FAF8F5] rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4 border border-black/10 max-h-[90vh]">
+          <div ref={shareImageModalRef} className="bg-[#FAF8F5] rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4 border border-black/10 max-h-[90vh]">
             <div className="flex justify-between items-center border-b border-dashed border-[#d0ccc4] pb-3">
               <span className="text-lg font-bold text-[#2C2C2C]">保存与分享核查报告</span>
               <button 
                 onClick={() => setShareImageUrl(null)}
+                aria-label="关闭弹窗"
                 className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 cursor-pointer border-none text-[#2C2C2C]"
               >
                 <X className="w-4 h-4" />
@@ -814,7 +901,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       {/* LaTeX Poster Share Modal */}
       {isPosterModalOpen && result.latexPoster && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-          <div className="bg-[#FAF8F5] rounded-3xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-4 border border-black/10 max-h-[95vh] overflow-hidden">
+          <div ref={posterModalRef} className="bg-[#FAF8F5] rounded-3xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-4 border border-black/10 max-h-[95vh] overflow-hidden">
             <div className="flex justify-between items-center border-b border-dashed border-[#d0ccc4] pb-3">
               <span className="text-lg font-bold text-[#2C2C2C]">生成辟谣大字报</span>
               <button 
@@ -823,6 +910,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
                   setPosterImageUrl(null);
                   setPosterImageBlob(null);
                 }}
+                aria-label="关闭弹窗"
                 className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 cursor-pointer border-none text-[#2C2C2C]"
               >
                 <X className="w-4 h-4" />
