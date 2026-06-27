@@ -190,13 +190,13 @@ app.post('/api/tts', async (req, res) => {
     const voiceName = voice || 'zh-CN-XiaoyiNeural';
     const speechRate = rate || '-12%'; // Slightly slower for senior readability
     const tempFileName = `tts_${Date.now()}_${Math.floor(Math.random() * 1000)}.mp3`;
-    const tempFilePath = path.join(__dirname, '..', tempFileName);
+    const tempFilePath = path.join(process.cwd(), tempFileName);
 
     // Securely invoke edge-tts CLI tool with custom voice and rate
     execFile('edge-tts', [
       '--voice', voiceName,
       '--text', text,
-      '--rate', speechRate,
+      `--rate=${speechRate}`,
       '--write-media', tempFilePath
     ], (error, stdout, stderr) => {
       if (error) {
