@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-27T03:40:00Z",
+  "title": "Design System: VeriFlow-AntiRumor",
+  "extensions": {
+    "colorMeta": {
+      "primary-verified": { "role": "primary", "displayName": "Verified Green", "canonical": "oklch(68% 0.22 145)", "tonalRamp": ["#00331a", "#006633", "#00994d", "#00B86B", "#33cc85", "#66d99e", "#99e6b7", "#ccf2db"] },
+      "primary-fake": { "role": "primary", "displayName": "Fake Red", "canonical": "oklch(60% 0.25 25)", "tonalRamp": ["#4a0b07", "#7d160f", "#b02217", "#FF3B30", "#ff6b61", "#ff9b94", "#ffccc7", "#ffe5e3"] },
+      "primary-doubtful": { "role": "primary", "displayName": "Doubtful Yellow", "canonical": "oklch(82% 0.19 85)", "tonalRamp": ["#4a3c00", "#806600", "#b38f00", "#FFCC00", "#ffd633", "#ffe066", "#ffeb99", "#fff5cc"] },
+      "neutral-bg": { "role": "neutral", "displayName": "Wheat Background", "canonical": "oklch(91% 0.012 80)", "tonalRamp": ["#1f1c18", "#3d3730", "#5c5349", "#807467", "#a6998c", "#c7bcaf", "#EAE6DF", "#FAF7F2"] },
+      "neutral-text": { "role": "neutral", "displayName": "Ink Black Text", "canonical": "oklch(28% 0.005 80)", "tonalRamp": ["#000000", "#111111", "#222222", "#2C2C2C", "#555555", "#777777", "#aaaaaa", "#cccccc"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Title", "purpose": "Main headers and final verdict titles." },
+      "body": { "displayName": "Body Text", "purpose": "Prose explanations and fact checking details." },
+      "label": { "displayName": "Technical Labels", "purpose": "Meta details, logs, hash and timestamps." }
+    },
+    "shadows": [
+      { "name": "receipt-shadow", "value": "0 12px 48px rgba(44, 44, 44, 0.06)", "purpose": "Gives physical card depth over warm background." },
+      { "name": "micro-lift", "value": "0.5em -0.5em 1em rgba(0, 0, 0, 0.18)", "purpose": "Elevates physical input buttons on hover." }
+    ],
+    "motion": [
+      { "name": "reveal-smooth", "value": "cubic-bezier(0.83, 0, 0.17, 1)", "purpose": "Transition of physical buttons front card." },
+      { "name": "accordion-slide", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Accordion expand animation for thinking steps." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Physical Icon Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Premium 3D-rotated large icon button used for main elderly inputs (Text, Voice, Camera).",
+      "html": "<button class=\"ds-icon-btn\"><div class=\"ds-icon-btn__back\"></div><div class=\"ds-icon-btn__front\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z\"/><path d=\"M19 10v2a7 7 0 0 1-14 0v-2\"/><line x1=\"12\" x2=\"12\" y1=\"19\" y2=\"22\"/></svg></div><span class=\"ds-icon-btn__label\">🎤 录段语音</span></button>",
+      "css": ".ds-icon-btn { background: transparent; border: none; outline: none; position: relative; width: 88px; height: 88px; perspective: 384px; transform-style: preserve-3d; cursor: pointer; display: inline-flex; margin-bottom: 30px; } .ds-icon-btn__back { border-radius: 24px; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #008a4f; box-shadow: 8px -8px 16px rgba(0, 0, 0, 0.18); transform: rotate(15deg); transform-origin: 100% 100%; transition: transform 0.3s cubic-bezier(0.83, 0, 0.17, 1); } .ds-icon-btn__front { border-radius: 24px; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.75); border: 2px solid rgba(0, 0, 0, 0.1); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: transform 0.3s cubic-bezier(0.83, 0, 0.17, 1), background-color 0.3s, border-color 0.3s; } .ds-icon-btn svg { width: 35px; height: 35px; color: #008a4f; } .ds-icon-btn__label { font-size: 14px; font-weight: 900; color: #000000; white-space: nowrap; text-align: center; position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(12px); transition: transform 0.3s cubic-bezier(0.83, 0, 0.17, 1); } .ds-icon-btn:hover .ds-icon-btn__back { transform: rotate(25deg) translate3d(-8px, -8px, 8px); } .ds-icon-btn:hover .ds-icon-btn__front { transform: translate3d(0, 0, 32px); background-color: rgba(255, 255, 255, 0.85); border-color: rgba(0, 0, 0, 0.2); } .ds-icon-btn:hover .ds-icon-btn__label { transform: translateX(-50%) translateY(16px); }"
+    },
+    {
+      "name": "Verification Receipt",
+      "kind": "card",
+      "refersTo": "receipt-bg",
+      "description": "Sawtooth receipt representing the final immutable check report.",
+      "html": "<div class=\"ds-receipt\"><div class=\"ds-sawtooth-top\"></div><div class=\"ds-receipt__header\"><h4>FACT CHECK RECEIPT</h4><p>TIME: 2026-06-27 11:34:00</p></div><div class=\"ds-receipt__divider\"></div><div class=\"ds-receipt__content\"><h5>The earth is flat?</h5><p>This statement is verified to be false. Scientific measurements and space photography confirm the spherical nature of earth.</p></div><div class=\"ds-sawtooth-bottom\"></div></div>",
+      "css": ".ds-receipt { position: relative; background: #FAF8F5; border-radius: 4px; box-shadow: 0 12px 48px rgba(44, 44, 44, 0.06); padding: 24px; max-width: 320px; font-family: sans-serif; color: #2C2C2C; } .ds-sawtooth-top { position: absolute; top: -6px; left: 0; right: 0; height: 6px; background: linear-gradient(-45deg, #FAF8F5 4.2px, transparent 0), linear-gradient(45deg, #FAF8F5 4.2px, transparent 0); background-repeat: repeat-x; background-size: 8px 6px; } .ds-sawtooth-bottom { position: absolute; bottom: -6px; left: 0; right: 0; height: 6px; background: linear-gradient(-135deg, #FAF8F5 4.2px, transparent 0), linear-gradient(135deg, #FAF8F5 4.2px, transparent 0); background-repeat: repeat-x; background-size: 8px 6px; } .ds-receipt__header { text-align: center; margin-top: 8px; } .ds-receipt__header h4 { margin: 0; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; } .ds-receipt__header p { margin: 4px 0 0 0; font-size: 10px; font-family: monospace; opacity: 0.5; } .ds-receipt__divider { border-bottom: 2px dashed #e2decb; margin: 16px 0; } .ds-receipt__content h5 { margin: 0 0 8px 0; font-size: 16px; font-weight: 700; } .ds-receipt__content p { margin: 0; font-size: 13px; line-height: 1.5; opacity: 0.8; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "纸质账单与印章核据 (The Stamped Invoice)",
+    "overview": "本设计系统旨在为视力、交互反应处于退化阶段的数字银发族，营造一种极具安全感与直观度的数字事实核查环境。通过“纸质核查小票”与“物理防伪印章”的视觉隐喻，让大语言模型的抽象文本结果转化为长辈熟悉的实体凭证。",
+    "keyCharacteristics": [
+      "实体触感：三维微凸玻璃态按键，撕裂边缘锯齿，拟真度高。",
+      "高确定性：无多余修饰性渐变，用纯色色块印章确定证实、伪造结论。",
+      "听觉辅助：全流程打字机、盖章重响，以多维反馈筑牢信任基础。"
+    ],
+    "rules": [
+      {
+        "name": "The Rare Accent Rule",
+        "body": "证实绿、伪造红、存疑黄仅能出现在状态印章、首要提交动作、及对应分类卡片的描边上，任何页面中上述三种高饱和度语义色的覆盖面积不得超过 10%。",
+        "section": "colors"
+      },
+      {
+        "name": "The Non-Fluid Product Rule",
+        "body": "为了防止在不同分辨率下字体无极缩放导致界面结构错位（特别是长辈大字重组），禁止在应用内部使用流式排版（如 `vw` 字体单位），必须使用明确的响应式字号。",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat At Rest Rule",
+        "body": "所有卡片、按钮在静止（At Rest）状态下均无明显厚重阴影。投影仅在用户产生悬停（Hover）或焦点激活（Focus）时作为微小的物理力学弹力回馈呈现。",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do 保证长辈模式下的段落行高至少为 1.6 倍以上，预防长辈阅读发生视觉串行。",
+      "Do 在渲染 Mermaid 逻辑因果图时提供自适应的手势缩放（Zoom）和滚轮拖拽事件，以便放大查看细节。",
+      "Do 每一个页面图片资源都经过同源接口 `/api/proxy-image` 中转，以防 Canvas 污染破坏截图卡片的正常导出。"
+    ],
+    "donts": [
+      "Don't 在正文背景与文本之间使用低于 4.5:1 的对比度。严禁使用浅灰色文字表示说明。",
+      "Don't 对大图标或图像直接在 hover 时施加缩放动画，避免老年用户产生视觉错乱（遵循禁止悬停缩放图片准则）。",
+      "Don't 嵌套卡片。小票即为唯一的内容承载卡，小票内不得再嵌套次级白底卡片。"
+    ]
+  }
+}

@@ -18,3 +18,15 @@ fact_check_logs/
 
 # Binary executables
 *.exe
+
+# AI Agent harnesses
+.agents/
+.claude/
+.codex/
+.gemini/
+.kiro/
+.qoder/
+.rovodev/
+
+# Impeccable sessions
+.impeccable/live/sessions/
