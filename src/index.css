@@ -5,6 +5,14 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-verified: #00B86B;
+  --color-verified-dark: #00663C;
+  --color-fake: #FF3B30;
+  --color-fake-dark: #C21E17;
+  --color-doubtful: #FFCC00;
+  --color-doubtful-dark: #8A6600;
+  --color-receipt-bg: #FAF8F5;
+  --color-neutral-bg: #EAE6DF;
 }
 
 body {

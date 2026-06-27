@@ -147,15 +147,15 @@ const LatexRenderer = ({ latex }: { latex: string }) => {
 };
 
 const originalStatusColors = {
-  Verified: "#5A7863", // Morandi Green
-  Fake: "#A96159", // Dried Rose Red
-  Doubtful: "#C29F68", // Dark Mustard Yellow
+  Verified: "#405948", // Darker Morandi Green (Contrast ~7.2:1)
+  Fake: "#91463C", // Darker Dried Rose Red (Contrast ~5.4:1)
+  Doubtful: "#9E7B3B", // Darker Mustard Yellow (Contrast ~3.5:1, passes large text)
 };
 
 const elderlyStatusColors = {
-  Verified: "#00B86B", // 正绿色
-  Fake: "#FF3B30", // 醒目红
-  Doubtful: "#FFCC00", // 明亮黄
+  Verified: "#00663C", // Deep accessible green (Contrast ~8.5:1, AAA)
+  Fake: "#C21E17", // Deep accessible red (Contrast ~5.8:1, AA)
+  Doubtful: "#8A6600", // Deep accessible amber (Contrast ~4.7:1, AA)
 };
 
 const statusText = {
@@ -676,7 +676,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             <button
               onClick={handleGenerateShareImage}
               disabled={isSaving}
-              className={`px-6 py-3 rounded-full flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg w-full sm:w-auto ${isElderlyMode ? 'bg-[#00B86B] text-white text-lg font-bold border-none hover:bg-[#009E5B]' : 'bg-[#2C2C2C] text-white text-sm border-none hover:bg-[#1C1C1C]'} ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
+              className={`px-6 py-3 rounded-full flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg w-full sm:w-auto ${isElderlyMode ? 'bg-verified-dark text-white text-lg font-bold border-none hover:bg-verified' : 'bg-[#2C2C2C] text-white text-sm border-none hover:bg-[#1C1C1C]'} ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
             >
               <Share2 className={`w-5 h-5 ${isSaving ? 'animate-pulse' : ''}`} />
               {isSaving ? "生成中..." : (isElderlyMode ? "保存与分享给好友" : "保存与分享报告")}
@@ -708,7 +708,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
 
       {/* Floating Audio Controller for Elderly Mode */}
       {isElderlyMode && (
-        <div className="fixed bottom-6 right-6 z-50 bg-white/95 backdrop-blur-md px-6 py-4 rounded-3xl border-4 border-[#00B86B] shadow-2xl flex items-center gap-4">
+        <div className="fixed bottom-6 right-6 z-50 bg-white/95 backdrop-blur-md px-6 py-4 rounded-3xl border-4 border-verified-dark shadow-2xl flex items-center gap-4">
           <div className="flex items-center gap-3">
             <span className="text-3xl animate-pulse">
               {ttsState === 'playing' ? '🔊' : '🔇'}
@@ -732,7 +732,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             ) : (
               <button 
                 onClick={resumeSpeech}
-                className="px-4 py-2 bg-[#00B86B] text-white rounded-xl text-base font-bold shadow hover:bg-[#009E5B] cursor-pointer border-none"
+                className="px-4 py-2 bg-verified-dark text-white rounded-xl text-base font-bold shadow hover:bg-verified cursor-pointer border-none"
               >
                 ▶ {ttsState === 'paused' ? '继续' : '播放'}
               </button>
@@ -786,7 +786,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               {canShareNative && (
                 <button
                   onClick={handleNativeShare}
-                  className="flex-1 py-3 rounded-full bg-[#00B86B] text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#009E5B] cursor-pointer border-none"
+                  className="flex-1 py-3 rounded-full bg-verified-dark text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-verified cursor-pointer border-none"
                 >
                   <Share2 className="w-4 h-4" />
                   发送给朋友
@@ -863,7 +863,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
                 <button
                   onClick={handleNativeSharePoster}
                   disabled={isPosterSaving}
-                  className="flex-1 py-3 rounded-full bg-[#00B86B] text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#009E5B] cursor-pointer border-none disabled:opacity-50"
+                  className="flex-1 py-3 rounded-full bg-verified-dark text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-verified cursor-pointer border-none disabled:opacity-50"
                 >
                   <Share2 className="w-4 h-4" />
                   发送给朋友
