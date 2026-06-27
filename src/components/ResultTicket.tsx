@@ -74,27 +74,30 @@ const LatexRenderer = ({ latex }: { latex: string }) => {
     if (containerRef.current && wrapperRef.current) {
       const targetEl = containerRef.current.querySelector('.katex-display') as HTMLElement;
       if (targetEl) {
-        // Reset styles and font size to standard 16px to measure actual natural width
-        containerRef.current.style.fontSize = '16px';
-        targetEl.style.transform = 'none';
-        targetEl.style.width = 'auto';
-        targetEl.style.display = 'block';
-        targetEl.style.margin = '0';
-        
         requestAnimationFrame(() => {
           if (!wrapperRef.current || !containerRef.current) return;
           
-          // Use clientWidth minus a tiny padding margin (8px on each side) to fit the container perfectly
-          const parentWidth = wrapperRef.current.clientWidth - 16;
+          const container = containerRef.current;
+          const wrapper = wrapperRef.current;
+          
+          // Batch resets and reads in the same frame to prevent layout thrashing and visual flicker
+          container.style.fontSize = '16px';
+          targetEl.style.transform = 'none';
+          targetEl.style.width = 'auto';
+          targetEl.style.display = 'block';
+          targetEl.style.margin = '0';
+          
+          // Measure values immediately after write in the animation frame
+          const parentWidth = wrapper.clientWidth - 16;
           const elementWidth = targetEl.scrollWidth || targetEl.offsetWidth;
           
           if (elementWidth > parentWidth && parentWidth > 0) {
             const ratio = parentWidth / elementWidth;
             // Let the font size scale down dynamically to fit smaller screens (min 6px font size)
             const newFontSize = Math.max(6, Math.floor(16 * ratio));
-            containerRef.current.style.fontSize = `${newFontSize}px`;
+            container.style.fontSize = `${newFontSize}px`;
           } else {
-            containerRef.current.style.fontSize = '16px';
+            container.style.fontSize = '16px';
           }
         });
       }
