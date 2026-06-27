@@ -33,14 +33,31 @@ export default function App() {
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [tempText, setTempText] = useState("");
   const [history, setHistory] = useState<Array<{query: string, status: string, time: string, steps?: WorkflowStep[], result?: AnalysisResult, mermaidChart?: string}>>(() => {
-    const saved = localStorage.getItem('terminator_history');
-    return saved ? JSON.parse(saved) : [];
+    const savedNormal = localStorage.getItem('terminator_history_normal');
+    if (savedNormal) return JSON.parse(savedNormal);
+    const savedOld = localStorage.getItem('terminator_history');
+    return savedOld ? JSON.parse(savedOld) : [];
   });
   
   // Audio references
   const printerAudioRef = useRef<HTMLAudioElement | null>(null);
   const stampAudioRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Synchronize history key based on current active mode
+  useEffect(() => {
+    const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      setHistory(JSON.parse(saved));
+    } else if (!isElderlyMode) {
+      // Fallback to legacy history for normal mode
+      const savedOld = localStorage.getItem('terminator_history');
+      setHistory(savedOld ? JSON.parse(savedOld) : []);
+    } else {
+      setHistory([]);
+    }
+  }, [isElderlyMode]);
 
   useEffect(() => {
     printerAudioRef.current = new Audio('/printer.mp3');
@@ -356,7 +373,8 @@ export default function App() {
                     result: finalResultObj,
                     mermaidChart: localMermaidChart
                   }, ...prev].slice(0, 20);
-                  localStorage.setItem('terminator_history', JSON.stringify(newHistory));
+                  const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
+                  localStorage.setItem(key, JSON.stringify(newHistory));
                   return newHistory;
                 });
                 
