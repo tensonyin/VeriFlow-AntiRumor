@@ -681,9 +681,11 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
           <div ref={ticketRef} className="flex flex-col gap-6 p-4 sm:p-6 bg-[#FAF8F5] rounded-lg">
             {/* If there's an image generated, render it before the ticket */}
             {result.imageUrl && isElderlyMode && (
-              <div className="w-full rounded-2xl overflow-hidden shadow-md border-4 border-white bg-white">
-                <img src={`/api/proxy-image?url=${encodeURIComponent(result.imageUrl)}`} alt="生成配图" className="w-full h-auto object-cover" />
-              </div>
+              <img 
+                src={`/api/proxy-image?url=${encodeURIComponent(result.imageUrl)}`} 
+                alt="生成配图" 
+                className="w-full h-auto object-cover rounded-2xl shadow-md border border-[#d0ccc4]/30" 
+              />
             )}
             
             <div className={`receipt p-8 font-mono ${isElderlyMode ? 'text-lg leading-[1.6]' : 'text-sm'} tracking-tight ${isElderlyMode ? 'text-black' : 'text-[#2C2C2C]'}`}>
@@ -889,7 +891,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               <button 
                 onClick={() => setShareImageUrl(null)}
                 aria-label="关闭弹窗"
-                className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 cursor-pointer border-none text-[#2C2C2C]"
+                className="w-11 h-11 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 cursor-pointer border-none text-[#2C2C2C]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -957,7 +959,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
                   setPosterImageBlob(null);
                 }}
                 aria-label="关闭弹窗"
-                className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 cursor-pointer border-none text-[#2C2C2C]"
+                className="w-11 h-11 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 cursor-pointer border-none text-[#2C2C2C]"
               >
                 <X className="w-4 h-4" />
               </button>
