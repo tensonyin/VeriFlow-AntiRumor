@@ -10,7 +10,21 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const DIFY_API_KEY = 'app-CRjOm6lfjIuFjY0Xwncpzg0M';
+let difyApiKey = 'app-CRjOm6lfjIuFjY0Xwncpzg0M'; // Fallback default key
+
+try {
+  const configPath = path.join(__dirname, '../config.json');
+  if (fs.existsSync(configPath)) {
+    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    if (configData.dify_api_key) {
+      difyApiKey = configData.dify_api_key;
+    }
+  }
+} catch (e) {
+  console.error('Failed to read config.json:', e);
+}
+
+const DIFY_API_KEY = process.env.DIFY_API_KEY || difyApiKey;
 
 // Set up multer to process multipart/form-data in memory
 const upload = multer({ storage: multer.memoryStorage() });
