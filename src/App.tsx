@@ -8,6 +8,7 @@ import HorizontalScrollList from "./components/HorizontalScrollList";
 import GlassIcons, { GlassIconsItem } from "./components/GlassIcons";
 import SplitText from "./components/SplitText";
 import ShinyText from "./components/ShinyText";
+import AudioRecorderModal from "./components/AudioRecorderModal";
 type AppState = "initial" | "analyzing" | "result" | "review_workflow";
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
   const [isElderlyMode, setIsElderlyMode] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
+  const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [tempText, setTempText] = useState("");
   const [history, setHistory] = useState<Array<{query: string, status: string, time: string, steps?: WorkflowStep[], result?: AnalysisResult, mermaidChart?: string}>>(() => {
     const savedNormal = localStorage.getItem('terminator_history_normal');
@@ -540,8 +542,8 @@ export default function App() {
                           {
                             icon: <Mic className="text-[#008a4f]" />,
                             color: 'green',
-                            label: '🎤 录段语音/视频',
-                            onClick: () => fileInputRef.current?.click()
+                            label: '🎤 说话录音',
+                            onClick: () => setIsAudioModalOpen(true)
                           }
                         ]}
                       />
@@ -619,18 +621,6 @@ export default function App() {
                         >
                           <Paperclip className="w-5 h-5" />
                         </button>
-                        {selectedFiles.length > 0 && (
-                          <div className="flex gap-1 overflow-x-auto max-w-[150px] sm:max-w-[250px] scrollbar-hide no-scrollbar pr-2 items-center m-0 flex-shrink-0">
-                            {selectedFiles.map((file, idx) => (
-                              <div key={idx} className="flex-shrink-0 flex items-center gap-1 bg-white/40 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-white/50 text-xs font-mono max-w-[80px] sm:max-w-[120px]">
-                                <span className="truncate">{file.name}</span>
-                                <button type="button" onClick={() => removeFile(idx)} className="opacity-60 hover:opacity-100 p-0.5" title="移除文件">
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
                       <input
                         type="text"
@@ -638,12 +628,12 @@ export default function App() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder=""
-                        className={`w-full h-16 sm:h-20 rounded-2xl glass-input ${selectedFiles.length > 0 ? 'pl-[130px] sm:pl-[240px]' : 'pl-[60px] sm:pl-[76px]'} pr-16 sm:pr-20 text-lg sm:text-xl font-light outline-none transition-all duration-300`}
+                        className="w-full h-16 sm:h-20 rounded-2xl glass-input pl-[60px] sm:pl-[76px] pr-16 sm:pr-20 text-lg sm:text-xl font-light outline-none transition-all duration-300"
                       />
                       {!query && (
-                        <div className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${selectedFiles.length > 0 ? 'left-[130px] sm:left-[240px]' : 'left-[60px] sm:left-[76px]'}`}>
+                        <div className="pointer-events-none absolute top-1/2 -translate-y-1/2 left-[60px] sm:left-[76px]">
                           <ShinyText
-                            text={selectedFiles.length > 0 ? "补充文字说明..." : "输入要核查的传言、链接或问题..."}
+                            text="输入要核查的传言、链接或问题..."
                             disabled={false}
                             speed={2.5}
                             color="#2C2C2C"
@@ -653,23 +643,55 @@ export default function App() {
                           />
                         </div>
                       )}
+                      
+                      {/* Submit button aligned perfectly inside the input container for standard mode */}
+                      <button 
+                        type="submit" 
+                        disabled={(appState as AppState) === "analyzing" || (!query.trim() && selectedFiles.length === 0)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 sm:p-4 rounded-xl opacity-80 hover:opacity-100 transition-opacity disabled:opacity-30 flex items-center justify-center gap-2 cursor-pointer border-none"
+                      >
+                        {(appState as AppState) === "analyzing" ? (
+                          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
+                            <Search className="w-6 h-6" />
+                          </motion.div>
+                        ) : (
+                          <Search className="w-6 h-6" />
+                        )}
+                      </button>
                     </div>
                   )}
 
-                  <button 
-                    type="submit" 
-                    disabled={(appState as AppState) === "analyzing" || (!query.trim() && selectedFiles.length === 0)}
-                    className={`${isElderlyMode ? 'w-full mt-6 bg-[#00B86B] text-white py-5 rounded-3xl text-2xl font-black shadow-lg hover:bg-[#009E5B]' : 'absolute right-4 top-1/2 -translate-y-1/2'} p-3 sm:p-4 rounded-xl opacity-80 hover:opacity-100 transition-opacity disabled:opacity-30 flex items-center justify-center gap-2 cursor-pointer border-none`}
-                  >
-                    {(appState as AppState) === "analyzing" ? (
-                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
+                  {/* Standard Mode Uploaded Files Display: rendered cleanly below the search bar */}
+                  {!isElderlyMode && selectedFiles.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2 justify-start px-2">
+                      {selectedFiles.map((file, idx) => (
+                        <div key={idx} className="flex-shrink-0 flex items-center gap-1.5 bg-white/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/5 text-xs font-mono max-w-[180px] shadow-sm">
+                          <span className="truncate text-[#2C2C2C]/80">{file.name}</span>
+                          <button type="button" onClick={() => removeFile(idx)} className="opacity-60 hover:opacity-100 p-0.5 text-red-500 cursor-pointer" title="移除文件">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Elderly Mode Submit Button: kept outside the inputs container */}
+                  {isElderlyMode && (
+                    <button 
+                      type="submit" 
+                      disabled={(appState as AppState) === "analyzing" || (!query.trim() && selectedFiles.length === 0)}
+                      className="w-full mt-6 bg-[#00B86B] text-white py-5 rounded-3xl text-2xl font-black shadow-lg hover:bg-[#009E5B] p-3 sm:p-4 opacity-80 hover:opacity-100 transition-opacity disabled:opacity-30 flex items-center justify-center gap-2 cursor-pointer border-none"
+                    >
+                      {(appState as AppState) === "analyzing" ? (
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
+                          <Search className="w-6 h-6" />
+                        </motion.div>
+                      ) : (
                         <Search className="w-6 h-6" />
-                      </motion.div>
-                    ) : (
-                      <Search className="w-6 h-6" />
-                    )}
-                    {isElderlyMode ? <span className="ml-2">开始核查真实性</span> : null}
-                  </button>
+                      )}
+                      <span className="ml-2">开始核查真实性</span>
+                    </button>
+                  )}
                 </form>
               </motion.div>
               
@@ -913,6 +935,19 @@ export default function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Audio Recorder Modal for Elderly Mode */}
+      <AnimatePresence>
+        {isAudioModalOpen && (
+          <AudioRecorderModal
+            isOpen={isAudioModalOpen}
+            onClose={() => setIsAudioModalOpen(false)}
+            onSave={(file) => {
+              setSelectedFiles((prev) => [...prev, file].slice(0, 5));
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

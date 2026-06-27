@@ -29,4 +29,4 @@ fact_check_logs/
 .rovodev/
 
 # Impeccable sessions
-.impeccable/live/sessions/
+.impeccable/

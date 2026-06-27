@@ -43,6 +43,9 @@
 
 ```text
 ├── assets/                 # 静态资源文件（包括音频、图片等）
+├── dify_workflows/         # Dify 对抗博弈工作流配置文件（YML & HTML 备份）
+├── docs/                   # 项目设计、产品规范及比赛路演汇报 PPT 文档
+├── scripts/                # 用于本地辅助开发与解析的 Python 辅助脚本
 ├── server/
 │   └── index.ts            # Node.js 后端服务（处理跨域代理、SSE流转发、TTS生成）
 ├── src/
@@ -56,9 +59,9 @@
 │   └── main.tsx            # React 挂载点
 ├── unihiker_app.py         # 行空板物理终端程序 (含PC仿真模拟)
 ├── config.json             # 硬件/API配置文件
-├── README.md               # 项目快速启动与演示文档
+├── CLAUDE.md               # AI 智能体开发规范与最佳实践
 ├── PROJECT_PROCESS.md      # 项目开发纪实与技术困难解决方案
-└── 谣言终结者_比赛汇报PPT.md # 比赛路演汇报 PPT 大纲
+└── README.md               # 项目快速启动与演示文档
 ```
 
 ---

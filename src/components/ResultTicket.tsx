@@ -707,7 +707,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
         initial={{ height: 0 }}
         animate={{ height: "auto" }}
         transition={{ duration: 1.8, ease: [0.4, 0, 0.2, 1], delay: 0.4 }}
-        className="w-full max-w-xl origin-top relative z-10 overflow-hidden px-4"
+        className="w-full max-w-xl origin-top relative z-10 overflow-hidden px-2 sm:px-4"
         style={{ marginTop: "-2px" }}
       >
         <motion.div
@@ -716,7 +716,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
           transition={{ duration: 1.8, ease: [0.4, 0, 0.2, 1], delay: 0.4 }}
           className="pb-4 pt-2"
         >
-          <div ref={ticketRef} className="flex flex-col gap-6 p-4 sm:p-6 bg-[#FAF8F5] rounded-lg">
+          <div ref={ticketRef} className="flex flex-col gap-6 p-2 sm:p-6 bg-[#FAF8F5] rounded-lg">
             {/* If there's an image generated, render it before the ticket */}
             {result.imageUrl && isElderlyMode && (
               <img 
@@ -726,7 +726,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               />
             )}
             
-            <div className={`receipt p-8 font-mono ${isElderlyMode ? 'text-lg leading-[1.6]' : 'text-sm'} tracking-tight ${isElderlyMode ? 'text-black' : 'text-[#2C2C2C]'}`}>
+            <div className={`receipt p-5 sm:p-8 font-mono ${isElderlyMode ? 'text-lg leading-[1.6]' : 'text-sm'} tracking-tight ${isElderlyMode ? 'text-black' : 'text-[#2C2C2C]'}`}>
               <div className="sawtooth-top"></div>
               <div className="sawtooth-bottom"></div>
             
@@ -819,7 +819,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             </div>
           )}
 
-          <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4 px-8">
+          <div className={`mt-8 flex flex-col sm:flex-row justify-center items-center gap-4 px-8 ${isElderlyMode ? 'pb-24 sm:pb-0' : ''}`}>
             <button
               onClick={handleGenerateShareImage}
               disabled={isSaving}
@@ -855,11 +855,11 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
 
       {/* Floating Audio Controller for Elderly Mode */}
       {isElderlyMode && (
-        <div className="fixed bottom-6 right-6 z-50 bg-white/95 backdrop-blur-md px-6 py-4 rounded-3xl border-4 border-verified-dark shadow-2xl flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl flex items-center justify-center">
+        <div className="fixed bottom-0 left-0 right-0 sm:bottom-6 sm:right-6 sm:left-auto z-50 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-6 sm:py-4 rounded-t-2xl sm:rounded-3xl border-t-4 border-x-0 border-b-0 sm:border-4 border-verified-dark shadow-2xl flex items-center justify-between gap-2 sm:gap-4 w-full sm:w-auto">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <span className="text-2xl sm:text-3xl flex items-center justify-center">
               {ttsState === 'loading' ? (
-                <Loader2 className="w-8 h-8 animate-spin text-verified-dark" />
+                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-verified-dark" />
               ) : ttsState === 'playing' ? (
                 <span className="animate-pulse">🔊</span>
               ) : (
@@ -867,55 +867,54 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               )}
             </span>
             <div className="flex flex-col">
-              <span className="text-lg font-black text-black leading-tight">语音播报</span>
-              <span className="text-xs text-black/75 font-bold">
+              <span className="text-base sm:text-lg font-black text-black leading-tight">语音播报</span>
+              <span className="text-[10px] sm:text-xs text-black/75 font-bold hidden sm:inline-block">
                 {ttsState === 'loading' 
-                  ? '正在为您合成语音...' 
+                  ? '合成中...' 
                   : ttsState === 'playing' 
-                    ? '正在为您大声朗读...' 
+                    ? '朗读中...' 
                     : ttsState === 'paused' 
-                      ? '朗读已暂停' 
-                      : '已停止播放'}
+                      ? '已暂停' 
+                      : '已停止'}
               </span>
             </div>
           </div>
           
-          <div className="flex items-center gap-2 border-l border-black/10 pl-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 border-l border-black/10 pl-2 sm:pl-3 flex-shrink-0">
             {ttsState === 'playing' ? (
               <button 
                 onClick={pauseSpeech}
-                className="px-4 py-2 bg-black text-white rounded-xl text-base font-bold shadow hover:bg-black/80 cursor-pointer border-none"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 bg-black text-white rounded-lg sm:rounded-xl text-sm sm:text-base font-bold shadow hover:bg-black/80 cursor-pointer border-none flex-shrink-0"
               >
-                ⏸ 暂停
+                ⏸ <span className="hidden sm:inline">暂停</span>
               </button>
             ) : (
               <button 
                 onClick={resumeSpeech}
                 disabled={ttsState === 'loading'}
-                className={`px-4 py-2 bg-verified-dark text-white rounded-xl text-base font-bold shadow hover:bg-verified cursor-pointer border-none ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`px-2.5 py-1.5 sm:px-4 sm:py-2 bg-verified-dark text-white rounded-lg sm:rounded-xl text-sm sm:text-base font-bold shadow hover:bg-verified cursor-pointer border-none flex-shrink-0 ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {ttsState === 'loading' ? '⏳ 加载中' : (ttsState === 'paused' ? '▶ 继续' : '▶ 播报')}
+                {ttsState === 'loading' ? '⏳' : '▶'} <span className="hidden sm:inline">{ttsState === 'paused' ? '继续' : '播报'}</span>
               </button>
             )}
             
             <button
               onClick={() => setSelectedVoice(prev => prev === 'zh-CN-XiaoyiNeural' ? 'zh-CN-YunxiNeural' : 'zh-CN-XiaoyiNeural')}
               disabled={ttsState === 'loading'}
-              className={`px-3 py-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none flex items-center gap-1 ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`px-2 py-1.5 sm:px-3 sm:py-2 bg-black/5 text-black hover:bg-black/10 rounded-lg sm:rounded-xl text-sm sm:text-base font-bold cursor-pointer border-none flex items-center gap-1 flex-shrink-0 ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="点击切换播报人声音"
             >
-              {selectedVoice === 'zh-CN-XiaoyiNeural' ? '👩 女儿声' : '🧑 儿子声'}
+              {selectedVoice === 'zh-CN-XiaoyiNeural' ? '👩' : '🧑'}<span className="hidden sm:inline">{selectedVoice === 'zh-CN-XiaoyiNeural' ? ' 女儿' : ' 儿子'}</span>
             </button>
 
             <button 
               onClick={startSpeech}
               disabled={ttsState === 'loading'}
-              className={`p-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`p-1.5 sm:p-2 bg-black/5 text-black hover:bg-black/10 rounded-lg sm:rounded-xl text-sm sm:text-base font-bold cursor-pointer border-none flex-shrink-0 ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="从头重新播报"
             >
               🔄
             </button>
-
           </div>
         </div>
       )}
@@ -1009,7 +1008,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               <div className="w-full overflow-hidden flex justify-center py-2">
                 <div 
                   ref={posterRef}
-                  className="w-[540px] max-w-full bg-[#FAF8F5] border-[12px] border-[#C21E17] rounded-xl p-8 shadow-md flex flex-col items-center text-center relative flex-shrink-0 overflow-hidden"
+                  className="w-[540px] max-w-full bg-[#FAF8F5] border-[6px] sm:border-[12px] border-[#C21E17] rounded-xl p-4 sm:p-8 shadow-md flex flex-col items-center text-center relative flex-shrink-0 overflow-hidden"
                   style={{ fontFamily: 'SimSun, STSong, "PingFang SC", sans-serif' }}
                 >
                   {/* Visual decorations for the traditional notice board */}
