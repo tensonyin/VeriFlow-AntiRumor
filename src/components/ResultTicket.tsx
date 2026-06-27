@@ -19,7 +19,19 @@ export interface AnalysisResult {
   imageUrl?: string;
   elderlyContent?: string;
   latexPoster?: string;
+  systemId?: string;
 }
+
+const getDeterministicId = (text: string, time: string) => {
+  const str = (text || "") + (time || "");
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  const positiveHash = Math.abs(hash);
+  return Math.floor((positiveHash % 899999) + 100000);
+};
 
 const sanitizeLatex = (raw: string): string => {
   if (!raw) return "";
@@ -671,7 +683,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             
             <div className="text-center border-b border-dashed border-[#d0ccc4] pb-6 mb-6 relative">
               <h2 className={`${isElderlyMode ? 'text-2xl' : 'text-lg'} font-bold tracking-widest uppercase mb-1 ${isElderlyMode ? 'opacity-100 text-black' : 'opacity-80'}`}>真相核查小票</h2>
-              <p className="text-xs text-black/65">系统编号 {Math.floor(Math.random() * 899999 + 100000)}</p>
+              <p className="text-xs text-black/65">系统编号 {result.systemId || getDeterministicId(result.sourceText, result.timestamp)}</p>
               <p className="text-xs text-black/65">{result.timestamp}</p>
               
                {/* 盖章动效 / Stamp Animation Moved to Top */}

@@ -341,7 +341,11 @@ export default function App() {
                 const fileNames = files.map(f => f.name).join(", ");
                 const searchStr = q || fileNames;
                 
-                const timeStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                const timeStr = new Date().toLocaleString('zh-CN', {
+                  timeZone: 'Asia/Shanghai',
+                  hour12: false
+                }).replace(/\//g, '-');
+                const generatedSystemId = String(Math.floor(Math.random() * 899999 + 100000));
                 
                 let imageUrlStr = "";
                 for (const val of Object.values(outputs)) {
@@ -359,6 +363,7 @@ export default function App() {
                   imageUrl: imageUrlStr,
                   elderlyContent: capturedElderlyReport,
                   latexPoster: capturedLatexPoster,
+                  systemId: generatedSystemId,
                 };
                 
                 setResult(finalResultObj);
