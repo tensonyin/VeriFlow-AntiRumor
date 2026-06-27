@@ -1,4 +1,4 @@
-# 谣言终结者：基于多源异构对抗博弈的多模态事实核查系统 (VeriFlow-AntiRumor)
+﻿# 谣言终结者：基于多源异构对抗博弈的多模态事实核查系统 (VeriFlow-AntiRumor)
 
 面向 AI 时代多源虚假信息的智能事实核查与适老化辟谣系统。本项目在第九届全国青少年人工智能创新挑战赛中用于“AI智能体设计开发专项赛”路演汇报。
 
@@ -88,7 +88,7 @@ PORT=3001
 并在本地 `config.json` 文件中配置您的 Dify API Key：
 ```json
 {
-  "dify_api_key": "app-CRjOm6lfjIuFjY0Xwncpzg0M",
+  "dify_api_key": "您的 Dify API Key",
   "dify_base_url": "https://api.dify.ai/v1",
   "max_record_seconds": 30,
   "tts_voice": "zh-CN-XiaoxiaoNeural"
