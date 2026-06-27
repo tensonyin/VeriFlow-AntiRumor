@@ -182,19 +182,21 @@ app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
 // TTS endpoint using local edge-tts
 app.post('/api/tts', async (req, res) => {
   try {
-    const { text, voice } = req.body;
+    const { text, voice, rate } = req.body;
     if (!text) {
       return res.status(400).json({ error: 'No text provided' });
     }
 
-    const voiceName = voice || 'zh-CN-XiaoxiaoNeural';
+    const voiceName = voice || 'zh-CN-XiaoyiNeural';
+    const speechRate = rate || '-12%'; // Slightly slower for senior readability
     const tempFileName = `tts_${Date.now()}_${Math.floor(Math.random() * 1000)}.mp3`;
     const tempFilePath = path.join(__dirname, '..', tempFileName);
 
-    // Securely invoke edge-tts CLI tool
+    // Securely invoke edge-tts CLI tool with custom voice and rate
     execFile('edge-tts', [
       '--voice', voiceName,
       '--text', text,
+      '--rate', speechRate,
       '--write-media', tempFilePath
     ], (error, stdout, stderr) => {
       if (error) {

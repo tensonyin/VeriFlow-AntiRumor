@@ -184,6 +184,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   const statusColors = isElderlyMode ? elderlyStatusColors : originalStatusColors;
 
   const [ttsState, setTtsState] = useState<'idle' | 'playing' | 'paused'>('idle');
+  const [selectedVoice, setSelectedVoice] = useState<'zh-CN-XiaoyiNeural' | 'zh-CN-YunxiNeural'>('zh-CN-XiaoyiNeural');
   const [isSaving, setIsSaving] = useState(false);
   const [shareImageBlob, setShareImageBlob] = useState<Blob | null>(null);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
@@ -495,7 +496,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
         },
         body: JSON.stringify({
           text: textToRead,
-          voice: 'zh-CN-XiaoxiaoNeural'
+          voice: selectedVoice
         })
       });
 
@@ -571,6 +572,13 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       cleanupTts();
     };
   }, [result, isElderlyMode]);
+
+  // Hot-swap voice instantly if toggled during speech
+  useEffect(() => {
+    if (ttsState === 'playing') {
+      startSpeech();
+    }
+  }, [selectedVoice]);
 
   const handleGenerateShareImage = async () => {
     if (isSaving) return;
@@ -832,15 +840,24 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
                 onClick={resumeSpeech}
                 className="px-4 py-2 bg-verified-dark text-white rounded-xl text-base font-bold shadow hover:bg-verified cursor-pointer border-none"
               >
-                ▶ {ttsState === 'paused' ? '继续' : '播放'}
+                ▶ {ttsState === 'paused' ? '继续' : '播报'}
               </button>
             )}
+            
+            <button
+              onClick={() => setSelectedVoice(prev => prev === 'zh-CN-XiaoyiNeural' ? 'zh-CN-YunxiNeural' : 'zh-CN-XiaoyiNeural')}
+              className="px-3 py-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none flex items-center gap-1"
+              title="点击切换播报人声音"
+            >
+              {selectedVoice === 'zh-CN-XiaoyiNeural' ? '👩 女儿声' : '🧑 儿子声'}
+            </button>
+
             <button 
               onClick={startSpeech}
-              className="px-4 py-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none"
-              title="从头开始播放"
+              className="p-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none"
+              title="从头重新播报"
             >
-              🔄 重听
+              🔄
             </button>
           </div>
         </div>
