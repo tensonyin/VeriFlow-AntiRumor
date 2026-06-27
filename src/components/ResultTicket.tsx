@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import MermaidChart from './MermaidChart';
-import { Eye, Share2, Download, X, ClipboardCopy } from 'lucide-react';
+import { Eye, Share2, Download, X, ClipboardCopy, Loader2 } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
@@ -183,7 +183,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   
   const statusColors = isElderlyMode ? elderlyStatusColors : originalStatusColors;
 
-  const [ttsState, setTtsState] = useState<'idle' | 'playing' | 'paused'>('idle');
+  const [ttsState, setTtsState] = useState<'idle' | 'loading' | 'playing' | 'paused'>('idle');
   const [selectedVoice, setSelectedVoice] = useState<'zh-CN-XiaoyiNeural' | 'zh-CN-YunxiNeural'>('zh-CN-XiaoyiNeural');
   const [isSaving, setIsSaving] = useState(false);
   const [shareImageBlob, setShareImageBlob] = useState<Blob | null>(null);
@@ -486,7 +486,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
     const baseContent = (isElderlyMode && result.elderlyContent) ? result.elderlyContent : result.content;
     const textToRead = "核查结论为：" + statusText[result.status] + "。详细报告如下：" + cleanMarkdownForSpeech(baseContent);
     
-    setTtsState('playing');
+    setTtsState('loading');
 
     try {
       const response = await fetch('/api/tts', {
@@ -521,6 +521,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       };
 
       await audio.play();
+      setTtsState('playing');
     } catch (e) {
       console.warn("Failed to fetch/play backend TTS, falling back to client speechSynthesis", e);
       fallbackSpeechSynthesis(textToRead);
@@ -816,13 +817,25 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       {isElderlyMode && (
         <div className="fixed bottom-6 right-6 z-50 bg-white/95 backdrop-blur-md px-6 py-4 rounded-3xl border-4 border-verified-dark shadow-2xl flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-3xl animate-pulse">
-              {ttsState === 'playing' ? '🔊' : '🔇'}
+            <span className="text-3xl flex items-center justify-center">
+              {ttsState === 'loading' ? (
+                <Loader2 className="w-8 h-8 animate-spin text-verified-dark" />
+              ) : ttsState === 'playing' ? (
+                <span className="animate-pulse">🔊</span>
+              ) : (
+                <span>🔇</span>
+              )}
             </span>
             <div className="flex flex-col">
               <span className="text-lg font-black text-black leading-tight">语音播报</span>
-              <span className="text-xs text-black/60 font-bold">
-                {ttsState === 'playing' ? '正在为您大声朗读...' : ttsState === 'paused' ? '朗读已暂停' : '已停止播放'}
+              <span className="text-xs text-black/75 font-bold">
+                {ttsState === 'loading' 
+                  ? '正在为您合成语音...' 
+                  : ttsState === 'playing' 
+                    ? '正在为您大声朗读...' 
+                    : ttsState === 'paused' 
+                      ? '朗读已暂停' 
+                      : '已停止播放'}
               </span>
             </div>
           </div>
@@ -838,15 +851,17 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             ) : (
               <button 
                 onClick={resumeSpeech}
-                className="px-4 py-2 bg-verified-dark text-white rounded-xl text-base font-bold shadow hover:bg-verified cursor-pointer border-none"
+                disabled={ttsState === 'loading'}
+                className={`px-4 py-2 bg-verified-dark text-white rounded-xl text-base font-bold shadow hover:bg-verified cursor-pointer border-none ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                ▶ {ttsState === 'paused' ? '继续' : '播报'}
+                {ttsState === 'loading' ? '⏳ 加载中' : (ttsState === 'paused' ? '▶ 继续' : '▶ 播报')}
               </button>
             )}
             
             <button
               onClick={() => setSelectedVoice(prev => prev === 'zh-CN-XiaoyiNeural' ? 'zh-CN-YunxiNeural' : 'zh-CN-XiaoyiNeural')}
-              className="px-3 py-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none flex items-center gap-1"
+              disabled={ttsState === 'loading'}
+              className={`px-3 py-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none flex items-center gap-1 ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="点击切换播报人声音"
             >
               {selectedVoice === 'zh-CN-XiaoyiNeural' ? '👩 女儿声' : '🧑 儿子声'}
@@ -854,11 +869,13 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
 
             <button 
               onClick={startSpeech}
-              className="p-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none"
+              disabled={ttsState === 'loading'}
+              className={`p-2 bg-black/5 text-black hover:bg-black/10 rounded-xl text-base font-bold cursor-pointer border-none ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="从头重新播报"
             >
               🔄
             </button>
+
           </div>
         </div>
       )}
