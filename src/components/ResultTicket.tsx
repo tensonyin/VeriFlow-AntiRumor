@@ -195,6 +195,8 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
+  const ttsAbortControllerRef = useRef<AbortController | null>(null);
 
   // LaTeX Poster Sharing States
   const [isPosterSaving, setIsPosterSaving] = useState(false);
@@ -203,6 +205,14 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   const [canShareNativePoster, setCanShareNativePoster] = useState(false);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
+
+  // Component mount tracking
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Focus trap and accessibility control for Share Image Modal
   useEffect(() => {
@@ -440,6 +450,10 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   };
 
   const cleanupTts = () => {
+    if (ttsAbortControllerRef.current) {
+      ttsAbortControllerRef.current.abort();
+      ttsAbortControllerRef.current = null;
+    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -462,9 +476,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(textToRead);
       utterance.lang = 'zh-CN';
-      utterance.rate = 0.95;
-      
-      utterance.onend = () => {
+              utterance.onend = () => {
         setTtsState('idle');
       };
       utterance.onerror = () => {
@@ -490,6 +502,9 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
     const textToRead = "核查结论为：" + statusText[result.status] + "。详细报告如下：" + cleanMarkdownForSpeech(baseContent);
     
     setTtsState('loading');
+    
+    const controller = new AbortController();
+    ttsAbortControllerRef.current = controller;
 
     try {
       const response = await fetch('/api/tts', {
@@ -500,7 +515,8 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
         body: JSON.stringify({
           text: textToRead,
           voice: selectedVoice
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -508,6 +524,10 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       }
 
       const blob = await response.blob();
+      
+      // Stop execution if unmounted or aborted
+      if (!isMountedRef.current || controller.signal.aborted) return;
+
       const url = URL.createObjectURL(blob);
       audioUrlRef.current = url;
 
@@ -519,15 +539,30 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       };
       
       audio.onerror = () => {
+        if (!isMountedRef.current || controller.signal.aborted) return;
         console.warn("Backend TTS playback error, falling back to client speechSynthesis");
         fallbackSpeechSynthesis(textToRead);
       };
 
       await audio.play();
+      
+      if (!isMountedRef.current || controller.signal.aborted) {
+        audio.pause();
+        return;
+      }
+      
       setTtsState('playing');
-    } catch (e) {
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        return;
+      }
+      if (!isMountedRef.current || controller.signal.aborted) return;
       console.warn("Failed to fetch/play backend TTS, falling back to client speechSynthesis", e);
       fallbackSpeechSynthesis(textToRead);
+    } finally {
+      if (ttsAbortControllerRef.current === controller) {
+        ttsAbortControllerRef.current = null;
+      }
     }
   };
 
