@@ -34,3 +34,4 @@ fact_check_logs/
 # Local Config File
 config.json
 server.js
+release.zip
