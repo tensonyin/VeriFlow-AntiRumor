@@ -10,7 +10,7 @@
     "build:frontend": "vite build",
     "build:backend": "esbuild server/index.ts --bundle --platform=node --outfile=server.js --format=esm --packages=external",
     "build": "npm run build:frontend && npm run build:backend",
-    "pack": "npm run build && powershell -Command \"Compress-Archive -Path dist, server.js, package.json, package-lock.json, config.example.json -DestinationPath release.zip -Force\"",
+    "pack": "npm run build && powershell -Command \"Compress-Archive -Path dist, server.js, package.json, package-lock.json, config.json, config.example.json -DestinationPath release.zip -Force\"",
     "start": "node server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js release.zip",
