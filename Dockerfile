@@ -21,7 +21,8 @@ COPY config.json ./config.json
 # 仅安装生产环境依赖
 RUN npm ci --omit=dev && npm cache clean --force
 
-# 暴露平台所需的 7860 端口
+# 强制注入 PORT 环境变量为 Hugging Face 所需的 7860
+ENV PORT=7860
 EXPOSE 7860
 
 CMD ["node", "server.js"]
