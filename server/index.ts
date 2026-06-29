@@ -14,10 +14,19 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-let difyApiKey = 'app-CRjOm6lfjIuFjY0Xwncpzg0M'; // Fallback default key
+
+// Dynamically resolve directory paths whether running via tsx or bundled at root
+const isBundled = fs.existsSync(path.join(__dirname, 'dist'));
+const distPath = isBundled 
+  ? path.join(__dirname, 'dist') 
+  : path.join(__dirname, '../dist');
+
+let difyApiKey = '';
 
 try {
-  const configPath = path.join(__dirname, '../config.json');
+  const configPath = isBundled
+    ? path.join(__dirname, 'config.json')
+    : path.join(__dirname, '../config.json');
   if (fs.existsSync(configPath)) {
     const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     if (configData.dify_api_key) {
@@ -29,6 +38,10 @@ try {
 }
 
 const DIFY_API_KEY = process.env.DIFY_API_KEY || difyApiKey;
+
+if (!DIFY_API_KEY) {
+  console.warn('\n⚠️  [WARNING]: DIFY_API_KEY is not configured! Please configure it in config.json or environment variables.\n');
+}
 
 // Set up multer to process multipart/form-data in memory
 const upload = multer({ storage: multer.memoryStorage() });
@@ -57,6 +70,12 @@ app.get('/api/proxy-image', async (req, res) => {
 // Main endpoint to handle analysis
 app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
   try {
+    if (!DIFY_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: 'Dify API Key is not configured on the server. Please configure it in config.json or environment variables.'
+      });
+    }
     const query = req.body.query || '';
     const files = req.files as Express.Multer.File[];
     
@@ -165,7 +184,7 @@ app.post('/api/analyze', upload.array('files', 5), async (req, res) => {
                 const data = JSON.parse(line.substring(6));
                 if (data.event === 'node_finished' && data.data) {
                    const title = data.data.title || data.data.node_type || "Unknown Node";
-                   const outputText = data.data.outputs?.text;
+                   const outputText = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string;
                    const outputAll = data.data.outputs;
                    
                    console.log(`\n======================================================`);
@@ -240,11 +259,11 @@ app.post('/api/tts', async (req, res) => {
 
 
 // Serve static files from the React frontend build directory
-app.use(express.static(path.join(__dirname, '../dist')));
+app.use(express.static(distPath));
 
 // Serve index.html for any other routes (supports SPA client-side routing)
 app.get('*', (req, res) => {
-  const indexPage = path.join(__dirname, '../dist/index.html');
+  const indexPage = path.join(distPath, 'index.html');
   if (fs.existsSync(indexPage)) {
     res.sendFile(indexPage);
   } else {

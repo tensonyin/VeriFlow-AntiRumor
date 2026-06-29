@@ -63,7 +63,7 @@ import socket
 # -----------------------------------------------------------------------------
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 config = {
-    "dify_api_key": "app-CRjOm6lfjIuFjY0Xwncpzg0M",
+    "dify_api_key": os.environ.get("DIFY_API_KEY", ""),
     "dify_base_url": "https://api.dify.ai/v1",
     "max_record_seconds": 30,
     "tts_voice": "zh-CN-XiaoxiaoNeural"
@@ -78,6 +78,10 @@ if os.path.exists(CONFIG_PATH):
         print(f"Error loading config.json: {e}, using defaults")
 else:
     print("config.json not found, using default settings")
+
+# Allow environment variables to override config file keys
+if os.environ.get("DIFY_API_KEY"):
+    config["dify_api_key"] = os.environ.get("DIFY_API_KEY")
 
 # -----------------------------------------------------------------------------
 # 3. UNIHIKER Board vs PC Simulation Check
@@ -758,6 +762,12 @@ def recording_worker():
 def api_processing_worker():
     global current_state, error_message_text
     
+    if not config.get("dify_api_key"):
+        error_message_text = "API Key未配置！\n请检查 config.json\n或设置 DIFY_API_KEY\n环境变量。\n\n按 A/B 键返回首页"
+        current_state = STATE_ERROR
+        ui_queue.put({"action": "redraw"})
+        return
+
     # Step 1: Upload audio file to Dify File Upload API (matching web app approach)
     print("Uploading WAV to Dify /files/upload...")
     upload_url = f"{config['dify_base_url']}/files/upload"

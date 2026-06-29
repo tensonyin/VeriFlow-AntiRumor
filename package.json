@@ -7,7 +7,10 @@
     "dev:frontend": "vite --port=3000 --host=0.0.0.0",
     "dev:backend": "tsx watch server/index.ts",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "vite build",
+    "build:frontend": "vite build",
+    "build:backend": "esbuild server/index.ts --bundle --platform=node --outfile=server.js --format=esm --packages=external",
+    "build": "npm run build:frontend && npm run build:backend",
+    "start": "node server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

@@ -1,5 +1,5 @@
 {
-  "dify_api_key": "app-CRjOm6lfjIuFjY0Xwncpzg0M",
+  "dify_api_key": "YOUR_DIFY_API_KEY_HERE",
   "dify_base_url": "https://api.dify.ai/v1",
   "max_record_seconds": 30,
   "tts_voice": "zh-CN-XiaoxiaoNeural"
