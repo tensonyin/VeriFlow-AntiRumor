@@ -32,6 +32,6 @@ fact_check_logs/
 .impeccable/
 
 # Local Config File
-config.json
+# config.json (included for deployment)
 server.js
 release.zip
