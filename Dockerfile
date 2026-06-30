@@ -19,7 +19,7 @@ COPY package-lock.json ./package-lock.json
 COPY config.json ./config.json
 
 # 仅安装生产环境依赖
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --jobs=1 --no-audit --no-fund && npm cache clean --force
 
 # 强制注入 PORT 环境变量为 Hugging Face 所需的 7860
 ENV PORT=7860
