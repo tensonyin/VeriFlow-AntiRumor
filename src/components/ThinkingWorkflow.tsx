@@ -8,7 +8,7 @@ export type StepStatus = "pending" | "processing" | "done";
 
 export interface WorkflowStep {
   id: string;
-  type: "search" | "ai_check" | "metadata" | "conclusion";
+  type: string;
   title: string;
   status: StepStatus;
   details: string[];

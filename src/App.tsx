@@ -34,6 +34,7 @@ export default function App() {
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [tempText, setTempText] = useState("");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [history, setHistory] = useState<Array<{query: string, status: string, time: string, steps?: WorkflowStep[], result?: AnalysisResult, mermaidChart?: string}>>(() => {
     const savedNormal = localStorage.getItem('terminator_history_normal');
     if (savedNormal) return JSON.parse(savedNormal);
@@ -66,6 +67,19 @@ export default function App() {
     printerAudioRef.current.loop = true;
     stampAudioRef.current = new Audio('/stamp.mp3');
   }, []);
+
+  useEffect(() => {
+    let interval: any;
+    if (appState === "analyzing") {
+      setElapsedSeconds(0);
+      interval = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [appState]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -232,7 +246,7 @@ export default function App() {
                 
                 // Determine final status from "定性裁决 Final Judge"
                 if (nodeTitle.includes("定性裁决") || nodeTitle.includes("Final Judge")) {
-                  const judgeText = data.data.outputs?.text || "";
+                  const judgeText = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                   const firstTwoChars = judgeText.substring(0, 2);
                   if (firstTwoChars === "证实") finalStatus = "Verified";
                   else if (firstTwoChars === "伪造") finalStatus = "Fake";
@@ -241,7 +255,7 @@ export default function App() {
 
                 // Capture Mermaid output (handles both old and new DSL node names)
                 if (nodeTitle.includes('Mermaid') || nodeTitle.includes('流程图代码')) {
-                  const mermaidText = data.data.outputs?.text || "";
+                  const mermaidText = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                   const match = mermaidText.match(/```mermaid([\s\S]*?)```/i);
                   let cleaned = mermaidText;
                   if (match) {
@@ -257,13 +271,13 @@ export default function App() {
                 }
 
                 // In the new DSL, the correct report is aggregated and output at the end.
-                if (nodeTitle.includes('Report Adjustment Out') || nodeTitle.includes('Report Adjustment') || nodeTitle.includes('报告修正')) {
-                   const txt = data.data.outputs?.text || "";
+                if (nodeTitle.includes('Report Adjustment Out') || nodeTitle.includes('Report Adjustment') || nodeTitle.includes('报告修正') || nodeTitle.includes('Compliance Agent') || nodeTitle.includes('报告合规修正专家')) {
+                   const txt = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                    if (txt.trim()) {
                      capturedReportText = txt.trim();
                    }
                 } else if (nodeTitle.includes('Report Out') || nodeTitle === '结束' || nodeTitle.includes('变量聚合器')) {
-                   const txt = data.data.outputs?.text || "";
+                   const txt = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                    if (txt.trim() && !capturedReportText) {
                      capturedReportText = txt.trim();
                    }
@@ -271,7 +285,7 @@ export default function App() {
 
                 // Capture "安心报告生成 Elderly Report Generation" output
                 if (nodeTitle.includes('安心报告') || nodeTitle.includes('Elderly Report') || data.data.node_id === '1782465366127') {
-                   const elderlyText = data.data.outputs?.text || "";
+                   const elderlyText = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                    if (elderlyText.trim()) {
                      capturedElderlyReport = elderlyText.trim();
                    }
@@ -279,14 +293,14 @@ export default function App() {
 
                 // Capture "LaTex大字报生成 LaTex Poster Generation" output
                 if (nodeTitle.includes('LaTex') || nodeTitle.includes('Poster') || data.data.node_id === '1782470849360') {
-                   const latexText = data.data.outputs?.text || "";
+                   const latexText = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                    if (latexText.trim()) {
                      capturedLatexPoster = latexText.trim();
                    }
                 }
 
                 // Update workflow step details — extract only the 'text' field
-                const textOutput = data.data.outputs?.text || '';
+                const textOutput = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || '';
                 localSteps = localSteps.map(step => 
                   step.id === data.data.node_id 
                     ? { ...step, status: 'done', details: textOutput ? [textOutput] : [] } 
@@ -782,71 +796,91 @@ export default function App() {
                         className={`flex w-full ${(!isElderlyMode && (firstResponseReceived || appState === "review_workflow")) ? "flex-row items-start gap-4 sm:gap-6" : "flex-col items-center justify-center mt-6"}`}
                       >
                         {appState !== "review_workflow" && (
-                          <motion.div
-                            layout
-                            initial={false}
-                            animate={{ 
-                              width: firstResponseReceived && !isElderlyMode ? 56 : 280,
-                              height: firstResponseReceived && !isElderlyMode ? 56 : 280,
-                            }}
-                            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                            className="relative flex flex-col items-center justify-center flex-shrink-0"
-                          >
-                            {!isElderlyMode ? (
-                              <>
-                                <RoseFourLoader className="w-full h-full opacity-80" color="#2C2C2C" />
-                                <AnimatePresence>
-                                  {!firstResponseReceived && (
-                                    <motion.p 
-                                      initial={{ opacity: 0 }}
-                                      animate={{ opacity: 1 }}
-                                      exit={{ opacity: 0 }}
-                                      className="font-mono text-sm uppercase tracking-widest opacity-50 absolute -bottom-16 whitespace-nowrap flex items-center"
-                                    >
-                                      正在初始化 AI 探员
-                                      <span className="inline-flex ml-1 w-6">
-                                        <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, times: [0, 0.5, 1], delay: 0 }}>.</motion.span>
-                                        <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, times: [0, 0.5, 1], delay: 0.2 }}>.</motion.span>
-                                        <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, times: [0, 0.5, 1], delay: 0.4 }}>.</motion.span>
-                                      </span>
-                                    </motion.p>
-                                  )}
-                                </AnimatePresence>
-                              </>
-                            ) : (
-                               // Elderly Mode Progress Bar
-                              <div className="w-full max-w-sm flex flex-col items-center gap-6 mt-8">
-                                <div className="text-2xl font-bold text-black animate-pulse">
-                                  机器正在为您全力运转核查中...
+                          isElderlyMode ? (
+                            // Elderly Mode Progress Bar: Rendered directly to avoid fixed height constraint of motion.div
+                            <div className="w-full max-w-xl flex flex-col items-center gap-6 mt-8 p-6 bg-white/80 rounded-3xl border-4 border-black/10 shadow-lg z-10">
+                              <div className="text-2xl font-black text-black animate-pulse text-center">
+                                👵 正在为您全力核查真实性，请稍候...
+                              </div>
+                              <div className="w-full h-8 bg-white rounded-full overflow-hidden border-2 border-black/10 p-0.5 shadow-inner">
+                                <motion.div 
+                                  className="h-full bg-[#00B86B] rounded-full"
+                                  animate={{ 
+                                    width: `${Math.max(5, Math.min(99, Math.max(
+                                      (workflowSteps.filter(s => s.status === 'done').length / 16) * 100,
+                                      (elapsedSeconds / 120) * 100
+                                    )))}%` 
+                                  }}
+                                  transition={{ type: "spring", stiffness: 60, damping: 15 }}
+                                />
+                              </div>
+                              <div className="w-full text-center flex flex-col gap-2">
+                                <div className="text-xl font-bold text-black">
+                                  正在进行第 {Math.min(workflowSteps.filter(s => s.status === 'done').length + 1, 16)}/16 项分析
                                 </div>
-                                <div className="w-full h-6 bg-white/50 rounded-full overflow-hidden border border-black/20 shadow-inner">
-                                  <motion.div 
-                                    className="h-full bg-[#00B86B]"
-                                    initial={{ width: "5%" }}
-                                    animate={{ width: "95%" }}
-                                    transition={{ duration: 30, ease: "linear" }}
-                                  />
+                                <div className="text-lg font-bold text-[#00B86B] bg-[#00B86B]/5 py-2 px-4 rounded-xl border border-[#00B86B]/15">
+                                  当前分析：{
+                                    workflowSteps[workflowSteps.length - 1]
+                                      ? workflowSteps[workflowSteps.length - 1].title.replace(/[a-zA-Z\s_-]+$/, '').trim()
+                                      : '系统初始化'
+                                  }
                                 </div>
-                                <div className="text-lg text-black/60 font-medium">
-                                  预计还需要约 20 秒，请稍候
+                                <div className="text-lg text-black/60 font-bold mt-1">
+                                  预计还需要：约 {
+                                    Math.floor(Math.max(5, 120 - elapsedSeconds) / 60) > 0
+                                      ? `${Math.floor(Math.max(5, 120 - elapsedSeconds) / 60)} 分 ${Math.max(5, 120 - elapsedSeconds) % 60} 秒`
+                                      : `${Math.max(5, 120 - elapsedSeconds)} 秒`
+                                  }，请长辈耐心等待
                                 </div>
                               </div>
-                            )}
-                          </motion.div>
+                            </div>
+                          ) : (
+                            // Normal Mode: Loader and Init states
+                            <motion.div
+                              layout
+                              initial={false}
+                              animate={{ 
+                                width: firstResponseReceived ? 56 : 280,
+                                height: firstResponseReceived ? 56 : 280,
+                              }}
+                              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                              className="relative flex flex-col items-center justify-center flex-shrink-0"
+                            >
+                              <RoseFourLoader className="w-full h-full opacity-80" color="#2C2C2C" />
+                              <AnimatePresence>
+                                {!firstResponseReceived && (
+                                  <motion.p 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="font-mono text-sm uppercase tracking-widest opacity-50 absolute -bottom-16 whitespace-nowrap flex items-center"
+                                  >
+                                    正在初始化 AI 探员
+                                    <span className="inline-flex ml-1 w-6">
+                                      <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, times: [0, 0.5, 1], delay: 0 }}>.</motion.span>
+                                      <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, times: [0, 0.5, 1], delay: 0.2 }}>.</motion.span>
+                                      <motion.span animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, times: [0, 0.5, 1], delay: 0.4 }}>.</motion.span>
+                                    </span>
+                                  </motion.p>
+                                )}
+                              </AnimatePresence>
+                            </motion.div>
+                          )
                         )}
 
-                        <AnimatePresence>
-                          {(firstResponseReceived || appState === "review_workflow") && (
-                            <motion.div 
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                              className={`flex-1 w-full pt-1 ${isElderlyMode ? 'max-w-xl mx-auto mt-6' : ''}`}
-                            >
-                              <ThinkingWorkflow steps={workflowSteps} isFinished={appState === "review_workflow"} isElderlyMode={isElderlyMode} />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+ 
+                         <AnimatePresence>
+                           {((firstResponseReceived && !isElderlyMode) || appState === "review_workflow") && (
+                             <motion.div 
+                               initial={{ opacity: 0, y: 20 }}
+                               animate={{ opacity: 1, y: 0 }}
+                               transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                               className={`flex-1 w-full pt-1 ${isElderlyMode ? 'max-w-xl mx-auto mt-6' : ''}`}
+                             >
+                               <ThinkingWorkflow steps={workflowSteps} isFinished={appState === "review_workflow"} isElderlyMode={isElderlyMode} />
+                             </motion.div>
+                           )}
+                         </AnimatePresence>
                       </motion.div>
                     </motion.div>
                   )}

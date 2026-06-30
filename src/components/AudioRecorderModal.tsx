@@ -89,6 +89,11 @@ export default function AudioRecorderModal({ isOpen, onClose, onSave }: AudioRec
   const startRecording = async () => {
     chunksRef.current = [];
     setPermissionError(null);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setPermissionError("由于浏览器安全策略限制，麦克风录音必须在 HTTPS 或 localhost 环境下使用。请使用 Chrome 的安全测试设置，或在服务器上启用 HTTPS 证书。");
+      return;
+    }
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

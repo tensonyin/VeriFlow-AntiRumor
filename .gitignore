@@ -32,6 +32,10 @@ fact_check_logs/
 .impeccable/
 
 # Local Config File
-# config.json (included for deployment)
+config.json
 server.js
 release.zip
+release_gcp.zip
+
+# Office temporary files
+~$*
