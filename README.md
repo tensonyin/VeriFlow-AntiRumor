@@ -99,7 +99,7 @@ graph TD
 ## 📁 项目目录结构 (Folder Structure)
 
 ```text
-├── 提交文件/               # 比赛官方提交材料
+├── 提交文件/               # 比赛官方提交材料 (已由 .gitignore 忽略以保护隐私，仅保留于本地)
 │   ├── 高中组-浙江省-温州市-温州中学-潘烁宇、尹晟言-《谣言终结者智能体》基本信息表.docx
 │   ├── 高中组-浙江省-温州市-温州中学-潘烁宇、尹晟言-《谣言终结者智能体》项目介绍.md
 │   ├── 高中组-浙江省-温州市-温州中学-潘烁宇、尹晟言-《谣言终结者智能体》PPT介绍.pptx
@@ -118,6 +118,7 @@ graph TD
 │   └── 谣言终结者：基于多源异构对抗博弈的多模态事实核查系统 (12).yml # 23节点工作流配置文件
 ├── scripts/                # 辅助开发、文本解析与数据抽取 Python 脚本
 ├── assets/                 # 静态资源（包括打字声、印章声等 MP3）
+├── test_samples/           # 本地核查测试文本样本
 ├── src/                    # React 19 前端源码
 │   ├── components/         # React UI 组件
 │   │   ├── MermaidChart.tsx   # Mermaid 流程图手势交互组件
@@ -131,7 +132,9 @@ graph TD
 ├── server/
 │   └── index.ts            # Node.js + Express 后端服务 (CORS代理、SSE转发、TTS本地生成)
 ├── unihiker_app.py         # 行空板物理程序（支持无硬件自适应 PC 高保真模拟器）
-├── config.json             # 硬件/API 配置文件 (Dify API Key 配置处)
+├── Dockerfile              # 远程云服务器 Docker 镜像编译配置文件
+├── PROJECT_PROCESS.md      # 项目过程性文件与开发纪实 (本仓库主线文档)
+├── config.json             # 硬件/API 配置文件 (Dify API Key 配置处，已忽略)
 ├── config.example.json     # 配置文件配置模板
 ├── .gitignore              # Git 忽略文件（包含自动过滤 config.json 及临时文件规则）
 ├── package.json            # 依赖与打包指令
