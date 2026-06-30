@@ -29,6 +29,7 @@ export default function App() {
   const [mermaidChart, setMermaidChart] = useState<string>("");
   
   // New features states
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [isElderlyMode, setIsElderlyMode] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
@@ -122,31 +123,158 @@ export default function App() {
       if (e.ctrlKey && e.altKey && e.code === 'KeyT') {
         e.preventDefault();
         
+        setIsDemoMode(true);
         setAppState("analyzing");
         setFirstResponseReceived(true);
-        setWorkflowSteps([
-          { id: "mock1", type: "search", title: "多语言信息源检索", status: "done", details: ["- 已检索中英文报道\n- 找到3篇相关新闻"] },
-          { id: "mock2", type: "ai_check", title: "多模态交叉验证", status: "done", details: ["- 视频帧未发现PS痕迹\n- 音频存在明显剪辑断层"] },
-          { id: "mock3", type: "metadata", title: "证据链逻辑重构", status: "done", details: ["- 核心矛盾点：事发时间对不上\n- 逻辑重构完成"] }
-        ]);
-        setMermaidChart("graph TD\n  A[传言] --> B(全网检索)\n  B --> C{交叉比对}\n  C -->|时间线冲突| D[证实造假]\n  C -->|画面被剪辑| D");
+        setWorkflowSteps([]);
+        setMermaidChart("");
+        setElapsedSeconds(0);
         
         if (isElderlyMode && printerAudioRef.current) {
           printerAudioRef.current.play().catch(() => {});
         }
+        
+        const mockStepsData = [
+          {
+            id: "sens",
+            type: "sensing",
+            title: "特征提取 Content Sensing",
+            details: `### 多模态物理特征检测报告
+- **输入文本检测**：对用户输入的陈述进行文本分词与特征提炼。
+- **多模态文件分析**：未检测到伴随音视频文件，激活文本事实检测。
+- **物理特征结论**：未发现物理层面的剪辑、拼接或图像篡改痕迹。`
+          },
+          {
+            id: "fore",
+            type: "search",
+            title: "事实核查取证 Forensic Agent",
+            details: `### 🔍 Tavily 多源实时跨境检索
+- **检索关键词**：提炼关键词 \`测试案例 谣言 辟谣\`。
+- **跨境双向检索**：自动翻译为英文并配以 \`test case rumor debunk\` 后缀进行全球检索。
+- **证据链召回**：
+  1. 检索到人民网辟谣平台和新华社相关主题报道 3 篇。
+  2. 检索到国际前沿事实校验论文 1 篇。
+- **网页链接存活测试**：测试 URL \`https://tavily.com\` 响应率正常，建立证据副本。`
+          },
+          {
+            id: "logi",
+            type: "ai_check",
+            title: "逻辑漏洞检查 Logic Judgment",
+            details: `### 🔬 常识与逻辑漏洞分析
+- **语境扫描**：文本中包含“绝对别信”、“假货！”等极端情绪词。
+- **逻辑谬误断定**：
+  - **圈套 1**：强行建立“测试模式”与“谣言”的等价关系，犯了“概念偷换”的谬误。
+  - **圈套 2**：恐吓度评分（75分），极易造成数字银发长辈的心理焦虑。`
+          },
+          {
+            id: "cros",
+            type: "ai_check",
+            title: "多源内容比对 Cross-Verification",
+            details: `### ⚖️ 多源证据交叉比对
+- **独立审计矩阵**：
+  - 传言内容：“这是一个测试案例，结论是虚假”。
+  - 搜索证据：无爆发性社会谣言关联，指向局部开发演练。
+  - 逻辑结论：确认为模拟性质的非真实虚假言论。
+- **交叉结果**：三方内容判定该传言属于人工模拟产生的测试内容。`
+          },
+          {
+            id: "judg",
+            type: "ai_check",
+            title: "定性裁决 Final Judge",
+            details: `### ⚖️ 首席大法官终审裁决
+- **定性标签**：\`伪造\` (Fake)
+- **判定理由依据**：经比对，此信息属于人工调试期间的特定快捷测试文本，结论为虚假。`
+          },
+          {
+            id: "merm",
+            type: "ai_check",
+            title: "流程图生成 Mermaid Generator",
+            details: `### 📊 Mermaid 拓扑逻辑生成
+- **拓扑结构**：定性为[伪造]，输出“左右分栏错位对比结构”，指出伪造点与真实源流的分歧。
+- **视觉风格**：已去除所有与 MathJax 渲染冲突的符号，自动注入莫兰迪淡红配色。`
+          },
+          {
+            id: "comp",
+            type: "ai_check",
+            title: "报告合规修正专家 Compliance Agent",
+            details: `### 🛡️ Python 代码沙箱存活自愈修正
+- **URL可用性验证**：代码沙箱执行 Python 连通性测试。
+- **链接清洗**：检测并清洗失效 URL 1 处，自动转换为 \`[已过滤失效链接]\`。
+- **报告最终签名**：事实一致性与语法合规性校验通过。`
+          },
+          {
+            id: "elder",
+            type: "ai_check",
+            title: "安心播报与 LaTeX 生成 Elderly Rewrite",
+            details: `### 👵 适老化与视觉渲染优化
+- **安心有声书生成**：将学术性研究结论重写为口语化、接地气的有声播报，语速降低 12%。
+- **LaTeX 排版大字报**：已编译 LaTeX 顺口溜大字报，设置高对比度红头板式。`
+          }
+        ];
 
-        setTimeout(() => {
-          setResult({
-            status: "Fake",
-            sourceText: "这是一个通过 Ctrl+Alt+T 快捷键生成的测试案例！",
-            content: "这是一个**纯前端模拟**的核查报告，您刚刚使用了测试模式跳过了后端的大模型等待时间。\n\n## 结论\n此传言是**虚假**的！通过这个模式您可以快速测试前端界面的各种渲染效果，特别是长辈模式、全屏展示、打字机动画、图片保存等。\n\n*注意：此模式不会消耗任何大模型 Token。*",
-            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-            imageUrl: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop", // placeholder image
-            elderlyContent: "亲爱的长辈朋友们，这个测试案例是假货！请大家一定注意防范，不要轻信网络谣言。我们核实了这个案例只是一个纯前端模拟的测试，请您放心！",
-            latexPoster: "$$\\begin{array}{c}\\mathbf{\\color{Red}{\\Huge 🌟\\ 测试大字报标题\\ 🌟}} \\\\\\hdashline\\\\\\mathbf{\\color{Crimson}{\\huge 【\\ 辟\\ 谣\\ 通\\ 知\\ 】}} \\\\\\\\\\mathbf{\\color{DarkBlue}{\\Large 亲\\ 爱\\ 的\\ 老\\ 年\\ 朋\\ 友\\ 们\\ ：}} \\\\\\\\\\mathbf{\\color{Black}{\\huge 测\\ 试\\ 案\\ 例\\ 为\\ 假\\ ．\\ 绝\\ 对\\ 别\\ 信\\ ！}} \\\\\\mathbf{\\color{Black}{\\huge 前\\ 端\\ 模\\ 拟\\ 功\\ 模\\ 式\\ ．\\ 只\\ 为\\ 测试\\ ！}} \\\\\\mathbf{\\color{Green}{\\huge 大\\ 字\\ 报\\ 已\\ 生成\\ ．\\ 顺\\ 利\\ 体验\\ ！}} \\\\\\\\\\hdashline\\\\\\mathbf{\\color{OrangeRed}{\\Large 💡\\ 健\\ 康\\ 养\\ 生\\ 小\\ 顺\\ 口\\ 溜\\ 💡}} \\\\\\\\\\mathbf{\\color{DarkCyan}{\\LARGE 测试功能经常用\\ ，\\ 没烦恼\\ ！}} \\\\\\mathbf{\\color{DarkCyan}{\\LARGE 谣言终结保平安\\ ，\\ 身体好\\ ！}} \\\\\\\\\\hdashline\\\\\\mathbf{\\color{Gold}{\\Large 💖\\ 祝\\ 您\\ 身体\\ 健\\ 康\\ ．\\ 万\\ 事\\ 如\\ 意\\ 💖}}\\end{array}$$",
-          });
-          setAppState("review_workflow");
-        }, 3000); // 3 seconds mock delay
+        let stepIndex = 0;
+        
+        const runNextStep = () => {
+          if (stepIndex < mockStepsData.length) {
+            const currentMock = mockStepsData[stepIndex];
+            
+            setWorkflowSteps(prev => {
+              const updated = prev.map((s, idx) => 
+                s.status === 'processing' 
+                  ? { ...s, status: 'done' as const, details: [mockStepsData[idx]?.details || ""] } 
+                  : s
+              );
+              return [...updated, {
+                id: currentMock.id,
+                type: currentMock.type,
+                title: currentMock.title,
+                status: 'processing' as const,
+                details: []
+              }];
+            });
+            
+            if (currentMock.id === 'merm') {
+              setMermaidChart("graph TD\n  A[传言] --> B(全网检索)\n  B --> C{交叉比对}\n  C -->|时间线冲突| D[证实造假]\n  C -->|画面被剪辑| D");
+            }
+            
+            stepIndex++;
+            // Slightly offset times for visual interest (1.0s to 1.3s per step)
+            setTimeout(runNextStep, 900 + Math.random() * 400);
+          } else {
+            setWorkflowSteps(prev => 
+              prev.map((s, idx) => 
+                s.status === 'processing' 
+                  ? { ...s, status: 'done' as const, details: [mockStepsData[idx]?.details || ""] } 
+                  : s
+              )
+            );
+            
+            setResult({
+              status: "Fake",
+              sourceText: "这是一个通过 Ctrl+Alt+T 快捷键生成的测试案例！",
+              content: "这是一个**纯前端模拟**的核查报告，您刚刚使用了测试模式跳过了后端的大模型等待时间。\n\n## 结论\n此传言是**虚假**的！通过这个模式您可以快速测试前端界面的各种渲染效果，特别是长辈模式、全屏展示、打字机动画、图片保存等。\n\n*注意：此模式不会消耗任何大模型 Token。*",
+              timestamp: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }).replace(/\//g, '-'),
+              imageUrl: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop", // placeholder image
+              elderlyContent: "亲爱的长辈朋友们，这个测试案例是假货！请大家一定注意防范，不要轻信网络谣言。我们核实了这个案例只是一个纯前端模拟的测试，请您放心！",
+              latexPoster: "$$\\begin{array}{c}\\mathbf{\\color{Red}{\\Huge 🌟\\ 测试大字报标题\\ 🌟}} \\\\\\hdashline\\\\\\mathbf{\\color{Crimson}{\\huge 【\\ 辟\\ 谣\\ 通\\ 知\\ 】}} \\\\\\\\\\mathbf{\\color{DarkBlue}{\\Large 亲\\ 爱\\ 的\\ 老\\ 年\\ 朋\\ 友\\ 们\\ ：}} \\\\\\\\\\mathbf{\\color{Black}{\\huge 测\\ 试\\ 案\\ 例\\ 为\\ 假\\ ．\\ 绝\\ 对\\ 别\\ 信\\ ！}} \\\\\\mathbf{\\color{Black}{\\huge 前\\ 端\\ 模\\ 拟\\ 功\\ 模\\ 式\\ ．\\ 只\\ 为\\ 测试\\ ！}} \\\\\\mathbf{\\color{Green}{\\huge 大\\ 字\\ 报\\ 已\\ 生成\\ ．\\ 顺\\ 利\\ 体验\\ ！}} \\\\\\\\\\hdashline\\\\\\mathbf{\\color{OrangeRed}{\\Large 💡\\ 健\\ 康\\ 养\\ 生\\ 小\\ 顺\\ 口\\ 溜\\ 💡}} \\\\\\\\\\mathbf{\\color{DarkCyan}{\\LARGE 测试功能经常用\\ ，\\ 没烦恼\\ ！}} \\\\\\mathbf{\\color{DarkCyan}{\\LARGE 谣言终结保平安\\ ，\\ 身体好\\ ！}} \\\\\\\\\\hdashline\\\\\\mathbf{\\color{Gold}{\\Large 💖\\ 祝\\ 您\\ 身体\\ 健\\ 康\\ ．\\ 万\\ 事\\ 如\\ 意\\ 💖}}\\end{array}$$",
+              systemId: String(Math.floor(Math.random() * 899999 + 100000))
+            });
+            
+            if (isElderlyMode) {
+              if (printerAudioRef.current) {
+                printerAudioRef.current.pause();
+                printerAudioRef.current.currentTime = 0;
+              }
+              if (stampAudioRef.current) {
+                stampAudioRef.current.play().catch(() => {});
+              }
+            }
+            
+            setTimeout(() => setAppState("result"), 800);
+          }
+        };
+        
+        setTimeout(runNextStep, 400);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -160,6 +288,7 @@ export default function App() {
     setFirstResponseReceived(false);
     setWorkflowSteps([]);
     setMermaidChart("");
+    setIsDemoMode(false);
     
     if (isElderlyMode && printerAudioRef.current) {
       printerAudioRef.current.play().catch(() => {});
@@ -807,8 +936,8 @@ export default function App() {
                                   className="h-full bg-[#00B86B] rounded-full"
                                   animate={{ 
                                     width: `${Math.max(5, Math.min(99, Math.max(
-                                      (workflowSteps.filter(s => s.status === 'done').length / 16) * 100,
-                                      (elapsedSeconds / 120) * 100
+                                      (workflowSteps.filter(s => s.status === 'done').length / (isDemoMode ? 8 : 16)) * 100,
+                                      (elapsedSeconds / (isDemoMode ? 8 : 120)) * 100
                                     )))}%` 
                                   }}
                                   transition={{ type: "spring", stiffness: 60, damping: 15 }}
@@ -816,7 +945,7 @@ export default function App() {
                               </div>
                               <div className="w-full text-center flex flex-col gap-2">
                                 <div className="text-xl font-bold text-black">
-                                  正在进行第 {Math.min(workflowSteps.filter(s => s.status === 'done').length + 1, 16)}/16 项分析
+                                  正在进行第 {Math.min(workflowSteps.filter(s => s.status === 'done').length + 1, isDemoMode ? 8 : 16)}/{isDemoMode ? 8 : 16} 项分析
                                 </div>
                                 <div className="text-lg font-bold text-[#00B86B] bg-[#00B86B]/5 py-2 px-4 rounded-xl border border-[#00B86B]/15">
                                   当前分析：{
@@ -827,9 +956,13 @@ export default function App() {
                                 </div>
                                 <div className="text-lg text-black/60 font-bold mt-1">
                                   预计还需要：约 {
-                                    Math.floor(Math.max(5, 120 - elapsedSeconds) / 60) > 0
-                                      ? `${Math.floor(Math.max(5, 120 - elapsedSeconds) / 60)} 分 ${Math.max(5, 120 - elapsedSeconds) % 60} 秒`
-                                      : `${Math.max(5, 120 - elapsedSeconds)} 秒`
+                                    isDemoMode ? (
+                                      `${Math.max(1, 8 - elapsedSeconds)} 秒`
+                                    ) : (
+                                      Math.floor(Math.max(5, 120 - elapsedSeconds) / 60) > 0
+                                        ? `${Math.floor(Math.max(5, 120 - elapsedSeconds) / 60)} 分 ${Math.max(5, 120 - elapsedSeconds) % 60} 秒`
+                                        : `${Math.max(5, 120 - elapsedSeconds)} 秒`
+                                    )
                                   }，请长辈耐心等待
                                 </div>
                               </div>
