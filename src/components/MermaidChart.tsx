@@ -20,6 +20,8 @@ export default function MermaidChart({ chart }: { chart: string }) {
   useEffect(() => {
     if (!chart) return;
 
+    const sanitizedChart = sanitizeMermaid(chart);
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -87,7 +89,7 @@ export default function MermaidChart({ chart }: { chart: string }) {
       </head>
       <body>
         <div class="mermaid">
-          ${chart}
+          ${sanitizedChart}
         </div>
       </body>
       </html>
@@ -221,4 +223,40 @@ export default function MermaidChart({ chart }: { chart: string }) {
       </div>
     </div>
   );
+}
+
+function sanitizeMermaid(chartStr: string): string {
+  if (!chartStr) return '';
+  
+  let formatted = chartStr;
+  
+  // 1. Stadium shape: id([text]) -> id(["text"])
+  formatted = formatted.replace(/(\w+)\(\[([^"\r\n]+?)\]\)/g, '$1(["$2"])');
+  
+  // 2. Rounded shape: id(text) -> id("text") (avoid matching subgraph or arrows)
+  formatted = formatted.replace(/(\w+)\(([^"\r\n]+?)\)/g, (match, id, text) => {
+    if (id === 'subgraph' || text.includes('-->') || text.includes('==>') || text.includes('-.->')) return match;
+    return `${id}("${text}")`;
+  });
+  
+  // 3. Rectangle shape: id[text] -> id["text"]
+  formatted = formatted.replace(/(\w+)\[([^"\r\n]+?)\]/g, '$1["$2"]');
+  
+  // 4. Decision shape: id{text} -> id{"text"}
+  formatted = formatted.replace(/(\w+)\{([^"\r\n]+?)\}/g, '$1{"$2"}');
+  
+  // 5. Asymmetric shape: id>text] -> id>"text"]
+  formatted = formatted.replace(/(\w+)>([^"\r\n]+?)\]/g, '$1>"$2"]');
+  
+  // 6. Dotted arrows with labels: A -. label .-> B  ==>  A -.->|label| B
+  formatted = formatted.replace(/(\w+)\s*-\.\s*([^.\r\n]+?)\s*\.-\s*>\s*(\w+)/g, '$1 -.->|$2| $3');
+  
+  // 7. Subgraph labels with parentheses or special chars: subgraph label -> subgraph "label"
+  formatted = formatted.replace(/subgraph\s+([^\r\n"&<>]+)/gi, (match, label) => {
+    const trimmed = label.trim();
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) return match;
+    return `subgraph "${trimmed}"`;
+  });
+
+  return formatted;
 }

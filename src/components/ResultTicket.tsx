@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import MermaidChart from './MermaidChart';
-import { Eye, Share2, Download, X, ClipboardCopy, Loader2 } from 'lucide-react';
+import { Eye, Share2, Download, X, ClipboardCopy, Loader2, Play, Pause } from 'lucide-react';
 import { toBlob } from 'html-to-image';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
@@ -197,6 +197,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   const audioUrlRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
   const ttsAbortControllerRef = useRef<AbortController | null>(null);
+  const lastActiveVoiceRef = useRef<string>("");
 
   // LaTeX Poster Sharing States
   const [isPosterSaving, setIsPosterSaving] = useState(false);
@@ -495,13 +496,14 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
     }
   };
 
-  const startSpeech = async () => {
+  const startSpeech = async (startTime = 0) => {
     cleanupTts();
     
     const baseContent = (isElderlyMode && result.elderlyContent) ? result.elderlyContent : result.content;
     const textToRead = "核查结论为：" + statusText[result.status] + "。详细报告如下：" + cleanMarkdownForSpeech(baseContent);
     
     setTtsState('loading');
+    lastActiveVoiceRef.current = selectedVoice;
     
     const controller = new AbortController();
     ttsAbortControllerRef.current = controller;
@@ -534,6 +536,24 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       const audio = new Audio(url);
       audioRef.current = audio;
 
+      let seeked = false;
+      const applySeek = () => {
+        if (startTime > 0 && !seeked && audio.duration && audio.duration > 0) {
+          try {
+            audio.currentTime = startTime;
+            seeked = true;
+            console.log(`🎯 Seeked audio to target time: ${startTime}s`);
+          } catch (e) {
+            console.warn("Failed to apply seek target:", e);
+          }
+        }
+      };
+
+      audio.onloadedmetadata = applySeek;
+      audio.oncanplay = applySeek;
+      audio.onplaying = applySeek;
+      audio.ontimeupdate = applySeek;
+
       audio.onended = () => {
         setTtsState('idle');
       };
@@ -551,6 +571,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
         return;
       }
       
+      applySeek();
       setTtsState('playing');
     } catch (e: any) {
       if (e.name === 'AbortError') {
@@ -579,11 +600,18 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   const resumeSpeech = () => {
     if (ttsState === 'paused') {
       if (audioRef.current) {
-        audioRef.current.play().catch(err => {
-          console.error("Failed to resume backend audio", err);
-          startSpeech();
-        });
-        setTtsState('playing');
+        if (selectedVoice !== lastActiveVoiceRef.current) {
+          // Voice has been changed while paused!
+          // Regenerate TTS and resume from the same playback time offset
+          const resumeTime = audioRef.current.currentTime;
+          startSpeech(resumeTime);
+        } else {
+          audioRef.current.play().catch(err => {
+            console.error("Failed to resume backend audio", err);
+            startSpeech();
+          });
+          setTtsState('playing');
+        }
       } else if ('speechSynthesis' in window) {
         window.speechSynthesis.resume();
         setTtsState('playing');
@@ -594,6 +622,14 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
       startSpeech();
     }
   };
+
+  // Handle voice change during active playback
+  useEffect(() => {
+    if (ttsState === 'playing' && audioRef.current) {
+      const currentTime = audioRef.current.currentTime;
+      startSpeech(currentTime);
+    }
+  }, [selectedVoice]);
 
   useEffect(() => {
     if (!isElderlyMode) {
@@ -612,12 +648,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
     };
   }, [result, isElderlyMode]);
 
-  // Hot-swap voice instantly if toggled during speech
-  useEffect(() => {
-    if (ttsState === 'playing') {
-      startSpeech();
-    }
-  }, [selectedVoice]);
+
 
   const handleGenerateShareImage = async () => {
     if (isSaving) return;
@@ -884,17 +915,22 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             {ttsState === 'playing' ? (
               <button 
                 onClick={pauseSpeech}
-                className="px-2.5 py-1.5 sm:px-4 sm:py-2 bg-black text-white rounded-lg sm:rounded-xl text-sm sm:text-base font-bold shadow hover:bg-black/80 cursor-pointer border-none flex-shrink-0"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 bg-black text-white rounded-lg sm:rounded-xl text-sm sm:text-base font-bold shadow hover:bg-black/80 cursor-pointer border-none flex-shrink-0 flex items-center justify-center gap-1.5"
               >
-                ⏸ <span className="hidden sm:inline">暂停</span>
+                <Pause size={16} /> <span className="hidden sm:inline">暂停</span>
               </button>
             ) : (
               <button 
                 onClick={resumeSpeech}
                 disabled={ttsState === 'loading'}
-                className={`px-2.5 py-1.5 sm:px-4 sm:py-2 bg-verified-dark text-white rounded-lg sm:rounded-xl text-sm sm:text-base font-bold shadow hover:bg-verified cursor-pointer border-none flex-shrink-0 ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`px-2.5 py-1.5 sm:px-4 sm:py-2 bg-verified-dark text-white rounded-lg sm:rounded-xl text-sm sm:text-base font-bold shadow hover:bg-verified cursor-pointer border-none flex-shrink-0 flex items-center justify-center gap-1.5 ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {ttsState === 'loading' ? '⏳' : '▶'} <span className="hidden sm:inline">{ttsState === 'paused' ? '继续' : '播报'}</span>
+                {ttsState === 'loading' ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Play size={16} />
+                )}
+                <span className="hidden sm:inline">{ttsState === 'paused' ? '继续' : '播报'}</span>
               </button>
             )}
             

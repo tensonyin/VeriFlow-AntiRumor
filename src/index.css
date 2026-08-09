@@ -81,11 +81,11 @@ body {
   font-size: 1.15rem;
 }
 
-.elderly-mode p,
-.elderly-mode span:not(.katex):not(.katex *),
-.elderly-mode li,
-.elderly-mode text,
-.elderly-mode div:not(.receipt):not(.sawtooth-top):not(.sawtooth-bottom):not(.katex):not(.katex *) {
+.elderly-mode p:not(button):not(button *),
+.elderly-mode span:not(.katex):not(.katex *):not(button):not(button *),
+.elderly-mode li:not(button):not(button *),
+.elderly-mode text:not(button):not(button *),
+.elderly-mode div:not(.receipt):not(.sawtooth-top):not(.sawtooth-bottom):not(.katex):not(.katex *):not(button):not(button *) {
   color: #000000 !important;
 }
 

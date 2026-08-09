@@ -1,5 +1,13 @@
 # 谣言终结者：基于多源异构对抗博弈的多模态事实核查系统 (VeriFlow-AntiRumor)
 
+## 项目资源
+
+Web前端网址：https://buildfuture.tech/
+
+Github项目源代码网址：https://github.com/tensonyin/VeriFlow-AntiRumor
+
+Dify后端工作流App网址：https://buildfuture.tech/dify （https://udify.app/workflow/H3Rk13uw0pSMHsbB）
+
 ## 项目过程性文件与开发纪实
 
 ---
@@ -29,21 +37,21 @@
 
 本项目严格对照《AI智能体设计开发专项赛参赛手册》选拔赛评分标准，各项技术实现与得分点对照如下，方便评审专家和裁判进行核实：
 
-| 评估维度 | 评分指标 | 权重 | 本项目核心得分点 | 对应源码 / 配置文件链接 |
-| :--- | :--- | :---: | :--- | :--- |
-| **创新性**<br>**(25%)** | **主题有新意** | 15% | 针对“AI虚假信息海啸”与“数字银发族”痛点，提出**首个红蓝对抗事实核查与温情适老化结合**的智能体系统。 | [development_report.md](./docs/development_report.md)<br>[README.md](./README.md) |
-| | **整体设计涉及多学科融合** | 10% | 融合计算机科学（AI/RAG）、社会学/心理学（银发焦虑控制）、视觉传达（LaTeX排版/d3-zoom）、电子工程（嵌入式开发）。 | [development_report.md](./docs/development_report.md#L7-L19) |
-| **完整性**<br>**(20%)** | **开发流程完整性** | 10% | 提供详尽的“需求分析 $\rightarrow$ 架构设计 $\rightarrow$ 双模开发 $\rightarrow$ 软硬联调 $\rightarrow$ 链接可用性测试与调试”的完整流程记录。 | [development_report.md](./docs/development_report.md)<br>[PROJECT_PROCESS.md](./PROJECT_PROCESS.md) |
-| | **提交内容和资源完整性** | 10% | 源码、PPT、项目信息表、高保真汇报视频（带打字与盖章物理音效、实物演示）、过程性文档等全部配齐。 | [docs/](./docs/)<br>本地“提交文件”目录 (已通过 .gitignore 忽略以防止敏感材料外泄) |
-| **先进性**<br>**(30%)** | **工作流开发** | 10% | 构建了多达 **23个节点** 的级联工作流，包含多个**红蓝博弈、材料校验、定性裁决、链接自愈、分流输出**等智能决策判断节点。 | [Dify 23节点工作流YML](./dify_workflows/%E8%B0%A3%E8%A8%80%E7%BB%88%E7%BB%93%E8%80%85%EF%BC%9A%E5%9F%BA%E4%BA%8E%E5%A4%9A%E6%BA%90%E5%BC%82%E6%9E%84%E5%AF%B9%E6%8A%97%E5%8D%9A%E5%BC%88%E7%9A%84%E5%A4%9A%E6%A8%A1%E6%80%81%E4%BA%8B%E5%AE%9E%E6%A0%B8%E6%9F%A5%E7%B3%BB%E7%BB%9F%20(12).yml) |
-| | **多模态调用** | 5% | 驱动层调用 `gemini-3.5-flash`，开启视觉 High 模式，智能提取语音、聊天截图（OCR）与视频字幕，实现多模态特征感知。 | [Dify YML (特征提取节点)](./dify_workflows/%E8%B0%A3%E8%A8%80%E7%BB%88%E7%BB%93%E8%80%85%EF%BC%9A%E5%9F%BA%E4%BA%8E%E5%A4%9A%E6%BA%90%E5%BC%82%E6%9E%84%E5%AF%B9%E6%8A%97%E5%8D%9A%E5%BC%88%E7%9A%84%E5%A4%9A%E6%A8%A1%E6%80%81%E4%BA%8B%E5%AE%9E%E6%A0%B8%E6%9F%A5%E7%B3%BB%E7%BB%9F%20(12).yml) |
-| | **多智能体协同** | 5% | 架构内包含 **Forensic Agent（正方取证）** 与 **Logic Judgment（反方审计）** 双轨博弈，由 **Final Judge（大法官）** 裁决，**Compliance Agent** 进行合规自我修正。 | [development_report.md](./docs/development_report.md#L40-L75) |
-| | **智能人机交互** | 5% | SSE流式思维风暴日志直播、支持双指手势缩放拖拽的Mermaid推导图、双音色温情TTS、拟物化热敏小票、行空板录音。 | [src/components/](./src/components/)<br>[unihiker_app.py](./unihiker_app.py) |
-| | **提示词设计质量** | 5% | 编写高水平系统提示词：事实感知合规红线、真相法庭独立审计原则、LaTeX排版防中文重叠、安心播报角色转换。 | 本地“提交文件”下 BACKEND_PROMPTS.md (已由 .gitignore 忽略以保护提示词安全) |
-| **扩展性**<br>**(10%)** | **可以扩展到特定设备中** | 5% | 深度适配 **DFRobot 行空板物理硬件智能终端**，开发 PC 仿真模拟器提升联调效率，并首创 **Web 虚拟扬声器代理机制**。 | [unihiker_app.py](./unihiker_app.py) |
-| | **“输出校验”功能** | 5% | 1. **Dify 内置 Python 代码解释器**并发请求校验所有 URL，自愈死链。<br>2. **行空板 Tkinter 绘制 Unicode 过滤**，防止 Emoji 导致闪退。 | [server/index.ts](./server/index.ts)<br>[unihiker_app.py](./unihiker_app.py#L329-L332) |
-| **传播性**<br>**(15%)** | **汇报过程完整流畅** | 10% | 汇报视频脚本逻辑清晰、层层递进；内置微信消息发送提示音、盖章声及印刷声，提供极具沉浸感的汇报体验。 | [汇报视频脚本.md](./docs/%E8%B0%A3%E8%A8%80%E7%BB%88%E7%BB%93%E8%80%85_%E6%B1%87%E6%8A%A5%E8%A7%86%E9%A2%9F%E8%84%9A%E6%9C%AC.md) |
-| | **有使用记录** | 5% | 具备真实老年用户试用及微信朋友圈、家庭群内的辟谣卡片分享传播回访记录，证明项目具备真实的社会应用价值。 | [development_report.md](./docs/development_report.md#L196-L202) |
+| 评估维度 | 评分指标 | 本项目核心得分点 |
+| :--- | :--- | :--- |
+| **创新性**<br>**(25%)** | **主题有新意** | 针对“AI虚假信息海啸”与“数字银发族”痛点，提出**首个红蓝对抗事实核查与温情适老化结合**的智能体系统。 |
+| | **整体设计涉及多学科融合** | 融合计算机科学（AI/RAG）、社会学/心理学（银发焦虑控制）、视觉传达（LaTeX排版/d3-zoom）、电子工程（嵌入式开发）。 |
+| **完整性**<br>**(20%)** | **开发流程完整性** | 提供详尽的“需求分析-->架构设计-->双模开发-->软硬联调-->链接可用性测试与调试”的完整流程记录。 |
+| | **提交内容和资源完整性** | 源码、PPT、项目信息表、汇报视频、过程性文档等全部配齐。 |
+| **先进性**<br>**(30%)** | **工作流开发** | 构建了多达 **23个节点** 的级联工作流，包含多个**红蓝博弈、材料校验、定性裁决、链接自愈、分流输出**等智能决策判断节点。 |
+| | **多模态调用** | 驱动层调用 `gemini-3.5-flash`，开启视觉模式，智能提取语音、聊天截图（OCR）与视频字幕，实现多模态特征感知。 |
+| | **多智能体协同** | 架构内包含 **Forensic Agent（正方取证）** 与 **Logic Judgment（反方审计）** 双轨博弈，由 **Final Judge（大法官）** 裁决，**Compliance Agent** 进行合规自我修正。 |
+| | **智能人机交互** | SSE流式思维风暴日志直播、支持双指手势缩放拖拽的Mermaid推导图、双音色温情TTS、拟物化热敏小票、行空板录音。 |
+| | **提示词设计质量** | 编写高水平系统提示词：事实感知合规红线、真相法庭独立审计原则、LaTeX排版防中文重叠、安心播报角色转换。<br />具体详见： [高中组-浙江省-温州市-温州中学-潘烁宇、尹晟言-《谣言终结者智能体》工作流提示词.pdf](高中组-浙江省-温州市-温州中学-潘烁宇、尹晟言-《谣言终结者智能体》工作流提示词.pdf) |
+| **扩展性**<br>**(10%)** | **可以扩展到特定设备中** | 深度适配 **DFRobot 行空板物理硬件智能终端**，开发 PC 仿真模拟器提升联调效率，并利用 **Web 虚拟扬声器代理机制**。 |
+| | **“输出校验”功能** | 1. **Dify 内置 Python 代码解释器**并发请求校验所有 URL，自愈死链。<br>2. **行空板 Tkinter 绘制 Unicode 过滤**，防止 Emoji 导致闪退。 |
+| **传播性**<br>**(15%)** | **汇报过程完整流畅** | 汇报视频脚本逻辑清晰、层层递进。 |
+| | **有使用记录** | 已提供给用户试用，证明项目具备真实的社会应用价值。 |
 
 ---
 
@@ -384,19 +392,16 @@ gantt
 
 | 文件路径 / 链接                                              | 文档类型     | 主要功能与分工描述                                           |
 | :----------------------------------------------------------- | :----------- | :----------------------------------------------------------- |
-| [README.md](./README.md)         | 说明文档     | 项目的快速启动、安装部署、依赖配置及比赛演示指南。           |
-| [unihiker_app.py](./unihiker_app.py) | Python 脚本  | 部署于行空板的物理终端控制程序，实现按键录音、屏幕状态渲染、TTS 语音播报及 PC 高保真模拟器。 |
-| [package.json](./package.json)   | 工程配置     | 定义前端 Web 与后端 Node 服务的依赖包及 `npm run dev` 运行命令。 |
-| [server/index.ts](./server/index.ts) | Node.js 代码 | 核心后端代理，管理跨域图片中转 `/api/proxy-image`、Dify 流式 SSE 转发 `/api/analyze` 和 Edge-TTS 语音合成接口 `/api/tts`。 |
-| [src/App.tsx](./src/App.tsx)     | React 代码   | 客户端核心应用逻辑，控制全局状态（初始化、生成中、分析结果、思维图），实现长辈模式的一键无缝转换。 |
+| [README.md](./README.md)                                     | 说明文档     | 项目的快速启动、安装部署、依赖配置及比赛演示指南。           |
+| [unihiker_app.py](./unihiker_app.py)                         | Python 脚本  | 部署于行空板的物理终端控制程序，实现按键录音、屏幕状态渲染、TTS 语音播报及 PC 高保真模拟器。 |
+| [package.json](./package.json)                               | 工程配置     | 定义前端 Web 与后端 Node 服务的依赖包及 `npm run dev` 运行命令。 |
+| [server/index.ts](./server/index.ts)                         | Node.js 代码 | 核心后端代理，管理跨域图片中转 `/api/proxy-image`、Dify 流式 SSE 转发 `/api/analyze` 和 Edge-TTS 语音合成接口 `/api/tts`。 |
+| [src/App.tsx](./src/App.tsx)                                 | React 代码   | 客户端核心应用逻辑，控制全局状态（初始化、生成中、分析结果、思维图），实现长辈模式的一键无缝转换。 |
 | [src/components/ResultTicket.tsx](./src/components/ResultTicket.tsx) | React 组件   | 渲染极具仪式感的“辟谣小票”，包含 LaTeX 大字报、安心报告、一键生成朋友圈辟谣分享卡片及分享截图保存功能。 |
 | [src/components/MermaidChart.tsx](./src/components/MermaidChart.tsx) | React 组件   | 实现 Dify 产出的推导 Mermaid 流程图的动态自适应渲染、滚轮无限缩放及鼠标拖拽交互。 |
 | [src/components/ThinkingWorkflow.tsx](./src/components/ThinkingWorkflow.tsx) | React 组件   | 前端流式“思维风暴”加载组件，以手风琴折叠卡片形式同步显示大模型后台节点的详细日志。 |
-| [docs/PRODUCT.md](./docs/PRODUCT.md) | 说明文档     | 本项目的产品定位、设计原则、可访问性标准与适老化交互指南。   |
-| [docs/DESIGN.md](./docs/DESIGN.md) | 设计规范     | 前端设计系统规范，定义了颜色面板、文字排版、阴影及各类交互的 CSS 规范。 |
-| [docs/谣言终结者_比赛汇报PPT.md](./docs/谣言终结者_比赛汇报PPT.md) | 演示文稿     | 本项目的第 9 届全国青少年人工智能创新挑战赛路演汇报 PPT 的详细内容及演讲旁白设计。 |
-| [docs/谣言终结者_汇报视频脚本.md](./docs/谣言终结者_汇报视频脚本.md) | 视频脚本     | 面向路演及展示视频设计的“画面-旁白-音效-BGM”多维分镜视频汇报脚本。 |
-| [docs/AI智能体设计开发专项赛_评分指标对照自查报告.md](./docs/AI智能体设计开发专项赛_评分指标对照自查报告.md) | 说明文档     | 对照大赛选拔赛评分标准的自查与裁判指引文件，细化各项分值对应的技术实现。 |
+| [docs/PRODUCT.md](./docs/PRODUCT.md)                         | 说明文档     | 本项目的产品定位、设计原则、可访问性标准与适老化交互指南。   |
+| [docs/DESIGN.md](./docs/DESIGN.md)                           | 设计规范     | 前端设计系统规范，定义了颜色面板、文字排版、阴影及各类交互的 CSS 规范。 |
 
 ### 6.2 技术栈 (Tech Stack)
 

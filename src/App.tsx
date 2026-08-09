@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Search, RotateCcw, Paperclip, X, Clock, Mic, Camera, FileText } from "lucide-react";
+import { Search, RotateCcw, Paperclip, X, Clock, Mic, Camera, FileText, Trash2 } from "lucide-react";
 import ResultTicket, { AnalysisResult } from "./components/ResultTicket";
 import RoseFourLoader from "./components/RoseFourLoader";
 import ThinkingWorkflow, { WorkflowStep } from "./components/ThinkingWorkflow";
@@ -10,6 +10,13 @@ import SplitText from "./components/SplitText";
 import ShinyText from "./components/ShinyText";
 import AudioRecorderModal from "./components/AudioRecorderModal";
 type AppState = "initial" | "analyzing" | "result" | "review_workflow";
+
+const cleanText = (text: string): string => {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    .replace(/([\u4e00-\u9fa5])\s*and\s*([\u4e00-\u9fa5])/gi, "$1与$2")
+    .replace(/([\u4e00-\u9fa5])\s*or\s*([\u4e00-\u9fa5])/gi, "$1或$2");
+};
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>("initial");
@@ -36,6 +43,12 @@ export default function App() {
   const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [tempText, setTempText] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Cache modal states
+  const [cacheModalOpen, setCacheModalOpen] = useState(false);
+  const [cachedResult, setCachedResult] = useState<any>(null);
+  const [pendingQuery, setPendingQuery] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [history, setHistory] = useState<Array<{query: string, status: string, time: string, steps?: WorkflowStep[], result?: AnalysisResult, mermaidChart?: string}>>(() => {
     const savedNormal = localStorage.getItem('terminator_history_normal');
     if (savedNormal) return JSON.parse(savedNormal);
@@ -281,7 +294,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isElderlyMode]);
 
-  const executeAnalysis = async (q: string, files: File[] = selectedFiles) => {
+  const executeAnalysisDirect = async (q: string, files: File[] = selectedFiles, bypassCache = false) => {
     if (!q.trim() && files.length === 0) return;
     setQuery(q);
     setAppState("analyzing");
@@ -294,18 +307,14 @@ export default function App() {
       printerAudioRef.current.play().catch(() => {});
     }
     
-    if (q.trim()) {
-      setRecentSearches(prev => {
-        const filtered = prev.filter(item => item !== q);
-        return [q, ...filtered].slice(0, 5);
-      });
-    }
+
 
     try {
       const formData = new FormData();
       if (q.trim()) formData.append('query', q);
       files.forEach(f => formData.append('files', f));
       formData.append('isElderlyMode', String(isElderlyMode));
+      formData.append('bypassCache', String(bypassCache));
 
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
@@ -403,12 +412,12 @@ export default function App() {
                 if (nodeTitle.includes('Report Adjustment Out') || nodeTitle.includes('Report Adjustment') || nodeTitle.includes('报告修正') || nodeTitle.includes('Compliance Agent') || nodeTitle.includes('报告合规修正专家')) {
                    const txt = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                    if (txt.trim()) {
-                     capturedReportText = txt.trim();
+                     capturedReportText = cleanText(txt.trim());
                    }
                 } else if (nodeTitle.includes('Report Out') || nodeTitle === '结束' || nodeTitle.includes('变量聚合器')) {
                    const txt = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                    if (txt.trim() && !capturedReportText) {
-                     capturedReportText = txt.trim();
+                     capturedReportText = cleanText(txt.trim());
                    }
                 }
 
@@ -416,7 +425,7 @@ export default function App() {
                 if (nodeTitle.includes('安心报告') || nodeTitle.includes('Elderly Report') || data.data.node_id === '1782465366127') {
                    const elderlyText = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                    if (elderlyText.trim()) {
-                     capturedElderlyReport = elderlyText.trim();
+                     capturedElderlyReport = cleanText(elderlyText.trim());
                    }
                 }
 
@@ -424,12 +433,12 @@ export default function App() {
                 if (nodeTitle.includes('LaTex') || nodeTitle.includes('Poster') || data.data.node_id === '1782470849360') {
                    const latexText = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || "";
                    if (latexText.trim()) {
-                     capturedLatexPoster = latexText.trim();
+                     capturedLatexPoster = cleanText(latexText.trim());
                    }
                 }
 
                 // Update workflow step details — extract only the 'text' field
-                const textOutput = data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || '';
+                const textOutput = cleanText(data.data.outputs?.text || data.data.outputs?.answer || data.data.outputs?.string || '');
                 localSteps = localSteps.map(step => 
                   step.id === data.data.node_id 
                     ? { ...step, status: 'done', details: textOutput ? [textOutput] : [] } 
@@ -451,20 +460,20 @@ export default function App() {
                   // Fallback: try outputs.text, but filter out mermaid content
                   const rawText = outputs.text ? String(outputs.text).trim() : '';
                   if (rawText && !rawText.startsWith('graph ') && !rawText.startsWith('flowchart ')) {
-                    resultText = rawText;
+                    resultText = cleanText(rawText);
                   } else {
                     // Scan all output values for a non-mermaid string
                     for (const val of Object.values(outputs)) {
                       if (val && typeof val === 'string' && val.trim() 
                           && !val.trim().startsWith('graph ') 
                           && !val.trim().startsWith('flowchart ')) {
-                        resultText = val.trim();
+                        resultText = cleanText(val.trim());
                         break;
                       }
                     }
                   }
                   if (!resultText) {
-                    resultText = JSON.stringify(outputs, null, 2);
+                    resultText = cleanText(JSON.stringify(outputs, null, 2));
                   }
                 }
 
@@ -568,6 +577,94 @@ export default function App() {
     }
   };
 
+  const executeAnalysis = async (q: string, files: File[] = selectedFiles) => {
+    if (!q.trim() && files.length === 0) return;
+    
+    // Transition to loading state immediately to prevent user delay on home page
+    setQuery(q);
+    setAppState("analyzing");
+    setFirstResponseReceived(false);
+    setWorkflowSteps([]);
+    setMermaidChart("");
+    setIsDemoMode(false);
+    
+    if (isElderlyMode && printerAudioRef.current) {
+      printerAudioRef.current.play().catch(() => {});
+    }
+    
+    try {
+      const formData = new FormData();
+      if (q.trim()) formData.append('query', q);
+      files.forEach(f => formData.append('files', f));
+      
+      const checkRes = await fetch('/api/check-cache', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (checkRes.ok) {
+        const checkData = await checkRes.json();
+        if (checkData.cached && checkData.result) {
+          setCachedResult(checkData.result);
+          setPendingQuery(q);
+          setPendingFiles(files);
+          setCacheModalOpen(true);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to check cache, falling back to direct analysis:', e);
+    }
+    
+    await executeAnalysisDirect(q, files, false);
+  };
+
+  const handleLoadCachedReport = () => {
+    if (!cachedResult) return;
+    setCacheModalOpen(false);
+    
+    setQuery(pendingQuery);
+    
+    const displayQuery = pendingQuery || pendingFiles.map(f => f.name).join(", ");
+    
+    const finalResultObj: AnalysisResult = {
+      status: cachedResult.status,
+      content: cleanText(cachedResult.content),
+      sourceText: displayQuery,
+      timestamp: cachedResult.created_at ? new Date(cachedResult.created_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }).replace(/\//g, '-') : new Date().toLocaleString(),
+      imageUrl: cachedResult.image_url || "",
+      elderlyContent: cleanText(cachedResult.elderly_content) || "",
+      latexPoster: cleanText(cachedResult.latex_poster) || "",
+      systemId: String(Math.floor(Math.random() * 899999 + 100000)),
+    };
+    
+    setResult(finalResultObj);
+    setMermaidChart(cachedResult.mermaid_chart || "");
+    setWorkflowSteps(Array.isArray(cachedResult.steps) ? cachedResult.steps : []);
+    
+    setHistory(prev => {
+      const timeStr = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }).replace(/\//g, '-');
+      const newHistory = [{ 
+        query: displayQuery, 
+        status: cachedResult.status, 
+        time: timeStr,
+        steps: Array.isArray(cachedResult.steps) ? cachedResult.steps : [],
+        result: finalResultObj,
+        mermaidChart: cachedResult.mermaid_chart || ""
+      }, ...prev].slice(0, 20);
+      const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
+      localStorage.setItem(key, JSON.stringify(newHistory));
+      return newHistory;
+    });
+    
+    setAppState("result");
+  };
+
+  const handleRegenerateReport = () => {
+    setCacheModalOpen(false);
+    executeAnalysisDirect(pendingQuery, pendingFiles, true);
+  };
+
   const handleAnalyzeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     executeAnalysis(query, selectedFiles);
@@ -583,6 +680,16 @@ export default function App() {
     } else {
       executeAnalysis(h.query);
     }
+  };
+
+  const deleteHistoryItem = (indexToDelete: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHistory(prev => {
+      const newHistory = prev.filter((_, idx) => idx !== indexToDelete);
+      const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
+      localStorage.setItem(key, JSON.stringify(newHistory));
+      return newHistory;
+    });
   };
 
   const resetState = () => {
@@ -872,6 +979,13 @@ export default function App() {
                         <div className="flex items-center gap-3">
                           <span className="text-xs opacity-40 font-mono">{h.time}</span>
                           <span className={`text-xs px-2 py-0.5 rounded font-bold ${h.status === 'Verified' ? 'bg-[#00B86B]/10 text-[#00B86B]' : h.status === 'Fake' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' : 'bg-[#FFCC00]/20 text-[#D4A000]'}`}>{h.status === 'Verified' ? '证实' : h.status === 'Fake' ? '伪造' : '存疑'}</span>
+                          <button 
+                            onClick={(e) => deleteHistoryItem(i, e)}
+                            className="p-1 rounded-full text-black/30 hover:text-[#FF3B30] hover:bg-black/5 transition-colors"
+                            title="删除此记录"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -1115,6 +1229,62 @@ export default function App() {
               setSelectedFiles((prev) => [...prev, file].slice(0, 5));
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Cache Hit Dialog Modal */}
+      <AnimatePresence>
+        {cacheModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#FAF8F5] border border-[#d0ccc4]/50 rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl flex flex-col gap-5 text-left"
+            >
+              <div className="flex justify-between items-center border-b border-[#d0ccc4]/30 pb-3">
+                <h3 className="text-lg font-bold text-[#2C2C2C] flex items-center gap-2">
+                  🔍 发现已有核查报告
+                </h3>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setCacheModalOpen(false);
+                    resetState();
+                  }}
+                  className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center font-bold text-[#2C2C2C]/50 cursor-pointer border-none"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="text-sm text-[#2C2C2C]/80 leading-relaxed">
+                系统检测到数据库中已存有针对该谣言的深度分析报告。直接查看可免去大约 1-2 分钟的智能体研判过程。
+              </div>
+
+              <div className="bg-[#FAF8F5] border border-[#d0ccc4]/30 rounded-xl p-3 text-xs text-[#2C2C2C]/70">
+                <div className="font-bold mb-1">谣言文本：</div>
+                <div className="line-clamp-3 italic">“{pendingQuery || "多媒体附件核查"}”</div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={handleRegenerateReport}
+                  className="flex-grow py-3 text-sm border border-[#d0ccc4]/80 text-[#2C2C2C]/70 hover:bg-[#FAF8F5] hover:text-[#2C2C2C] rounded-xl font-medium cursor-pointer transition-all bg-white"
+                >
+                  重新生成报告
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoadCachedReport}
+                  className="flex-grow py-3 text-sm bg-[#A96159] hover:bg-[#8e4f48] text-white rounded-xl font-medium shadow-sm cursor-pointer transition-all border-none"
+                >
+                  直接查看报告
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

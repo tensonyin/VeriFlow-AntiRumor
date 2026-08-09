@@ -19,7 +19,9 @@
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@gsap/react": "^2.1.2",
+    "@supabase/supabase-js": "^2.112.2",
     "@tailwindcss/vite": "^4.1.14",
+    "@types/pg": "^8.21.0",
     "@vitejs/plugin-react": "^5.0.4",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
@@ -33,6 +35,7 @@
     "mermaid": "^11.15.0",
     "motion": "^12.23.24",
     "multer": "^2.2.0",
+    "pg": "^8.23.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-markdown": "^10.1.0",
