@@ -1,5 +1,5 @@
 # 使用轻量级 Node 运行环境
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # 安装 Python3 和 edge-tts (语音合成所需)
