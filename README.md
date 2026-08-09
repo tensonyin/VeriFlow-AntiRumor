@@ -6,7 +6,7 @@
 [![Hardware Platform](https://img.shields.io/badge/Hardware-DFRobot%20Unihiker-blueviolet.svg?style=flat-square)](https://www.unihiker.com/)
 [![Competition Category](https://img.shields.io/badge/专项赛-AI智能体设计开发-red.svg?style=flat-square)](#)
 
-面向 AI 时代多源虚假信息的智能事实核查与适老化辟谣系统。本项目专为**第九届全国青少年人工智能创新挑战赛 - “AI智能体设计开发专项赛”**决赛路演及成果交付研发。
+面向 AI 时代多源虚假信息的智能事实核查与适老化辟谣系统。
 
 ---
 
