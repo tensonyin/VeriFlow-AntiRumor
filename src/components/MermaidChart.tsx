@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { ZoomIn, ZoomOut, Maximize2, Minimize2 } from 'lucide-react';
 
-export default function MermaidChart({ chart }: { chart: string }) {
+export default function MermaidChart({ chart, onError }: { chart: string; onError?: () => void }) {
   const [srcDoc, setSrcDoc] = useState('');
   const [iframeHeight, setIframeHeight] = useState(500);
   const [zoom, setZoom] = useState(1.0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -19,6 +20,7 @@ export default function MermaidChart({ chart }: { chart: string }) {
 
   useEffect(() => {
     if (!chart) return;
+    setHasError(false);
 
     const sanitizedChart = sanitizeMermaid(chart);
 
@@ -43,6 +45,8 @@ export default function MermaidChart({ chart }: { chart: string }) {
           .mermaid {
             background: transparent;
             width: 100%;
+            display: flex;
+            justify-content: center;
           }
           .mermaid svg {
             max-width: 100%;
@@ -50,63 +54,92 @@ export default function MermaidChart({ chart }: { chart: string }) {
             height: auto !important;
             width: auto !important;
           }
+          .error-icon, .error-text, svg[aria-roledescription="error"] {
+            display: none !important;
+          }
         </style>
         <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"><\/script>
         <script>
-          document.addEventListener("DOMContentLoaded", () => {
-            mermaid.initialize({
-              startOnLoad: true,
-              theme: 'base',
-              themeVariables: {
-                primaryColor: 'transparent',
-                primaryTextColor: '#2C2C2C',
-                primaryBorderColor: '#A39C94',
-                lineColor: '#A39C94',
-                secondaryColor: '#EAE6DF',
-                tertiaryColor: '#FAF8F5',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '14px'
-              },
-              securityLevel: 'loose',
-              flowchart: { useMaxWidth: true, htmlLabels: true }
-            });
+          window.onerror = function() {
+            window.parent.postMessage({ type: 'mermaid-error' }, '*');
+            return true;
+          };
 
-            // Wait for mermaid to finish rendering, then report height
-            const observer = new MutationObserver(() => {
-              const svg = document.querySelector('.mermaid svg');
-              if (svg) {
-                observer.disconnect();
-                setTimeout(() => {
-                  const rect = document.body.getBoundingClientRect();
-                  const contentHeight = Math.max(rect.height, svg.getBoundingClientRect().height + 40);
-                  window.parent.postMessage({ type: 'mermaid-height', height: contentHeight }, '*');
-                }, 200);
+          document.addEventListener("DOMContentLoaded", async () => {
+            try {
+              mermaid.initialize({
+                startOnLoad: false,
+                suppressErrorRendering: true,
+                theme: 'base',
+                themeVariables: {
+                  primaryColor: 'transparent',
+                  primaryTextColor: '#2C2C2C',
+                  primaryBorderColor: '#A39C94',
+                  lineColor: '#A39C94',
+                  secondaryColor: '#EAE6DF',
+                  tertiaryColor: '#FAF8F5',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '14px'
+                },
+                securityLevel: 'loose',
+                flowchart: { useMaxWidth: true, htmlLabels: true }
+              });
+
+              const target = document.getElementById('mermaid-render-box');
+              const rawText = ${JSON.stringify(sanitizedChart)};
+
+              // Verify chart validity
+              const isValid = await mermaid.parse(rawText).catch(() => false);
+              if (!isValid) {
+                window.parent.postMessage({ type: 'mermaid-error' }, '*');
+                return;
               }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
+
+              const { svg } = await mermaid.render('mermaid_graph_' + Math.floor(Math.random()*100000), rawText);
+              if (!svg || svg.includes('Syntax error') || svg.includes('aria-roledescription="error"')) {
+                window.parent.postMessage({ type: 'mermaid-error' }, '*');
+                return;
+              }
+
+              target.innerHTML = svg;
+
+              setTimeout(() => {
+                const renderedSvg = target.querySelector('svg');
+                if (!renderedSvg) {
+                  window.parent.postMessage({ type: 'mermaid-error' }, '*');
+                  return;
+                }
+                const rect = document.body.getBoundingClientRect();
+                const contentHeight = Math.max(rect.height, renderedSvg.getBoundingClientRect().height + 40);
+                window.parent.postMessage({ type: 'mermaid-height', height: contentHeight }, '*');
+              }, 150);
+            } catch (err) {
+              window.parent.postMessage({ type: 'mermaid-error' }, '*');
+            }
           });
         <\/script>
       </head>
       <body>
-        <div class="mermaid">
-          ${sanitizedChart}
-        </div>
+        <div id="mermaid-render-box" class="mermaid"></div>
       </body>
       </html>
     `;
     setSrcDoc(htmlContent);
   }, [chart]);
 
-  // Listen for height messages from the iframe
+  // Listen for messages from the iframe
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.type === 'mermaid-height' && typeof e.data.height === 'number') {
+      if (e.data?.type === 'mermaid-error') {
+        setHasError(true);
+        onError?.();
+      } else if (e.data?.type === 'mermaid-height' && typeof e.data.height === 'number') {
         setIframeHeight(Math.max(200, Math.ceil(e.data.height)));
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, []);
+  }, [onError]);
 
   const handleZoomIn = useCallback(() => setZoom(z => Math.min(z + 0.5, 5.0)), []);
   const handleZoomOut = useCallback(() => setZoom(z => Math.max(z - 0.2, 0.2)), []);
@@ -137,7 +170,7 @@ export default function MermaidChart({ chart }: { chart: string }) {
     setIsDragging(false);
   };
 
-  if (!chart) return null;
+  if (!chart || hasError) return null;
 
   return (
     <div 

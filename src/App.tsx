@@ -9,6 +9,9 @@ import GlassIcons, { GlassIconsItem } from "./components/GlassIcons";
 import SplitText from "./components/SplitText";
 import ShinyText from "./components/ShinyText";
 import AudioRecorderModal from "./components/AudioRecorderModal";
+import { supabase } from "./supabaseClient";
+import LoginModal from "./components/LoginModal";
+import RechargeModal from "./components/RechargeModal";
 type AppState = "initial" | "analyzing" | "result" | "review_workflow";
 
 const cleanText = (text: string): string => {
@@ -49,32 +52,255 @@ export default function App() {
   const [cachedResult, setCachedResult] = useState<any>(null);
   const [pendingQuery, setPendingQuery] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [history, setHistory] = useState<Array<{query: string, status: string, time: string, steps?: WorkflowStep[], result?: AnalysisResult, mermaidChart?: string}>>(() => {
+  const [history, setHistory] = useState<Array<{query: string, status: string, time: string, steps?: WorkflowStep[], result?: AnalysisResult, mermaidChart?: string, cache_key?: string}>>(() => {
     const savedNormal = localStorage.getItem('terminator_history_normal');
     if (savedNormal) return JSON.parse(savedNormal);
     const savedOld = localStorage.getItem('terminator_history');
     return savedOld ? JSON.parse(savedOld) : [];
   });
+
+  // Account & credit system states
+  const [session, setSession] = useState<any>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [lastCheckIn, setLastCheckIn] = useState<string | null>(null);
+  const [guestUUID, setGuestUUID] = useState<string | null>(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
+  const [creditAlertOpen, setCreditAlertOpen] = useState(false);
+  const [creditAlertMsg, setCreditAlertMsg] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncLoadingMsg, setSyncLoadingMsg] = useState("正在同步云端数据与历史记录...");
   
   // Audio references
   const printerAudioRef = useRef<HTMLAudioElement | null>(null);
   const stampAudioRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const currentCacheKeyRef = useRef<string>("");
 
-  // Synchronize history key based on current active mode
-  useEffect(() => {
-    const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      setHistory(JSON.parse(saved));
-    } else if (!isElderlyMode) {
-      // Fallback to legacy history for normal mode
-      const savedOld = localStorage.getItem('terminator_history');
-      setHistory(savedOld ? JSON.parse(savedOld) : []);
-    } else {
-      setHistory([]);
+  const fetchProfile = async (currentSession: any, currentGuestUUID: string | null) => {
+    try {
+      const headers: any = {};
+      if (currentSession) {
+        headers['Authorization'] = `Bearer ${currentSession.access_token}`;
+      } else if (currentGuestUUID) {
+        headers['x-guest-uuid'] = currentGuestUUID;
+      } else {
+        return;
+      }
+      const res = await fetch('/api/user/profile', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.profile) {
+          setCredits(data.profile.credits);
+          setLastCheckIn(data.profile.last_check_in);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
     }
-  }, [isElderlyMode]);
+  };
+
+  const fetchHistory = async (currentSession: any) => {
+    if (!currentSession) return;
+    try {
+      const modeParam = isElderlyMode ? 'elderly' : 'normal';
+      const res = await fetch(`/api/user/history?mode=${modeParam}`, {
+        headers: {
+          'Authorization': `Bearer ${currentSession.access_token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.history) {
+          const mappedHistory = data.history.map((h: any) => ({
+            query: h.query,
+            status: h.status,
+            time: h.time,
+            cache_key: h.cache_key,
+            mermaidChart: h.mermaid_chart || "",
+            steps: Array.isArray(h.steps) ? h.steps : [],
+            result: h.content ? {
+              status: h.status,
+              content: cleanText(h.content),
+              sourceText: h.query,
+              timestamp: h.time,
+              imageUrl: h.image_url || "",
+              elderlyContent: cleanText(h.elderly_content || ""),
+              latexPoster: cleanText(h.latex_poster || ""),
+              systemId: String(Math.floor(Math.random() * 899999 + 100000))
+            } : undefined
+          }));
+          setHistory(mappedHistory);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch history:', err);
+    }
+  };
+
+  const handleAuthSuccess = async (newSession: any) => {
+    setIsSyncing(true);
+    setSyncLoadingMsg("正在合并本地核查记录与同步额度...");
+    setSession(newSession);
+    
+    // Migrate local history & remaining guest credits
+    const savedNormal = localStorage.getItem('terminator_history_normal') || localStorage.getItem('terminator_history') || '[]';
+    const savedElderly = localStorage.getItem('terminator_history_elderly') || '[]';
+    let localHist = [];
+    try {
+      localHist = [...JSON.parse(savedNormal), ...JSON.parse(savedElderly)];
+    } catch (e) {}
+
+    const uniqueLocalHist = Array.from(new Map(localHist.map((item: any) => [item.cache_key || item.query, item])).values());
+    const sanitizedLocalHist = uniqueLocalHist.map((item: any) => ({
+      query: item.query,
+      status: item.status,
+      time: item.time,
+      cache_key: item.cache_key || item.id || ''
+    }));
+
+    try {
+      const headers: any = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${newSession.access_token}`
+      };
+      if (guestUUID) {
+        headers['x-guest-uuid'] = guestUUID;
+      }
+
+      const res = await fetch('/api/user/migrate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ localHistory: sanitizedLocalHist })
+      });
+
+      const resText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(resText);
+      } catch (e) {
+        throw new Error(`服务器响应异常 (${res.status}): ${resText.slice(0, 100)}`);
+      }
+
+      if (res.ok && data.success && data.profile) {
+        setCredits(data.profile.credits);
+        setLastCheckIn(data.profile.last_check_in);
+        localStorage.removeItem('terminator_history_normal');
+        localStorage.removeItem('terminator_history_elderly');
+        localStorage.removeItem('terminator_history');
+      } else {
+        throw new Error(data.error || `数据迁移合并失败 (状态码 ${res.status})`);
+      }
+    } catch (err: any) {
+      console.error('Error during data migration:', err);
+      alert('同步本地历史及额度到云端失败：\n' + err.message);
+    } finally {
+      await Promise.all([
+        fetchProfile(newSession, guestUUID),
+        fetchHistory(newSession)
+      ]);
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    setIsSyncing(true);
+    setSyncLoadingMsg("正在退出登录并切换访客环境...");
+    try {
+      await supabase.auth.signOut();
+      setSession(null);
+      setCredits(null);
+      setLastCheckIn(null);
+      await fetchProfile(null, guestUUID);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleCheckIn = async () => {
+    if (!session) return;
+    const clientLocalDate = new Date().toLocaleDateString('sv');
+    try {
+      const res = await fetch('/api/user/check-in', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ clientLocalDate })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCredits(data.credits);
+        setLastCheckIn(clientLocalDate);
+        alert(data.message || '签到成功！已获得 3 个额度。');
+      } else {
+        alert(data.error || '签到失败，请重试。');
+      }
+    } catch (err) {
+      console.error('Check-in error:', err);
+      alert('签到失败，请检查网络。');
+    }
+  };
+
+  // Initialize session & guest credentials
+  useEffect(() => {
+    let currentGuestUUID = localStorage.getItem("terminator_guest_uuid");
+    if (!currentGuestUUID) {
+      const match = document.cookie.match(/terminator_guest_uuid=([^;]+)/);
+      if (match) currentGuestUUID = match[1];
+    }
+    if (!currentGuestUUID) {
+      currentGuestUUID = window.crypto?.randomUUID ? window.crypto.randomUUID() : (Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
+      localStorage.setItem("terminator_guest_uuid", currentGuestUUID);
+      document.cookie = `terminator_guest_uuid=${currentGuestUUID}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+    setGuestUUID(currentGuestUUID);
+
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      if (currentSession) {
+        fetchProfile(currentSession, null);
+        fetchHistory(currentSession);
+      } else {
+        fetchProfile(null, currentGuestUUID);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
+      if (currentSession) {
+        fetchProfile(currentSession, null);
+        fetchHistory(currentSession);
+      } else {
+        setCredits(null);
+        setLastCheckIn(null);
+        fetchProfile(null, currentGuestUUID);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Synchronize history key based on current active mode or authentication session
+  useEffect(() => {
+    if (session) {
+      fetchHistory(session);
+    } else {
+      const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        setHistory(JSON.parse(saved));
+      } else if (!isElderlyMode) {
+        const savedOld = localStorage.getItem('terminator_history');
+        setHistory(savedOld ? JSON.parse(savedOld) : []);
+      } else {
+        setHistory([]);
+      }
+    }
+  }, [isElderlyMode, session]);
 
   useEffect(() => {
     printerAudioRef.current = new Audio('/printer.mp3');
@@ -296,6 +522,19 @@ export default function App() {
 
   const executeAnalysisDirect = async (q: string, files: File[] = selectedFiles, bypassCache = false) => {
     if (!q.trim() && files.length === 0) return;
+
+    // Check credits before executing new generation (bypassCache or cache miss)
+    if (credits !== null && credits <= 0) {
+      if (!session) {
+        setIsLoginModalOpen(true);
+        return;
+      } else {
+        setIsRechargeModalOpen(true);
+        return;
+      }
+    }
+
+    currentCacheKeyRef.current = "";
     setQuery(q);
     setAppState("analyzing");
     setFirstResponseReceived(false);
@@ -306,8 +545,6 @@ export default function App() {
     if (isElderlyMode && printerAudioRef.current) {
       printerAudioRef.current.play().catch(() => {});
     }
-    
-
 
     try {
       const formData = new FormData();
@@ -319,8 +556,16 @@ export default function App() {
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
+      const headers: any = {};
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      } else if (guestUUID) {
+        headers['x-guest-uuid'] = guestUUID;
+      }
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
+        headers: headers,
         body: formData,
         signal: abortController.signal
       });
@@ -330,7 +575,19 @@ export default function App() {
         try {
           const errData = await response.json();
           errMsg = errData.error || errMsg;
-        } catch(e) {}
+          if (response.status === 403) {
+            if (errData.needLogin) {
+              setIsLoginModalOpen(true);
+            } else if (errData.needRecharge) {
+              setIsRechargeModalOpen(true);
+            } else {
+              setCreditAlertMsg(errData.message || errMsg);
+              setCreditAlertOpen(true);
+            }
+            setAppState("initial");
+            return;
+          }
+        } catch (e) {}
         throw new Error(errMsg);
       }
 
@@ -363,7 +620,9 @@ export default function App() {
             try {
               const data = JSON.parse(dataStr);
               
-              if (data.event === 'workflow_started') {
+              if (data.event === 'cache_key') {
+                currentCacheKeyRef.current = data.cache_key;
+              } else if (data.event === 'workflow_started') {
                 setFirstResponseReceived(true);
               } else if (data.event === 'node_started') {
                 if (!firstResponseReceived) setFirstResponseReceived(true);
@@ -522,20 +781,37 @@ export default function App() {
                 
                 setResult(finalResultObj);
                 
-                // Save to history using localSteps to capture latest steps synchronously and safely
                 setHistory(prev => {
-                  const newHistory = [{ 
+                  const targetKey = currentCacheKeyRef.current || "";
+                  const newItem = { 
                     query: searchStr, 
                     status: finalStatus, 
                     time: timeStr,
                     steps: localSteps,
                     result: finalResultObj,
-                    mermaidChart: localMermaidChart
-                  }, ...prev].slice(0, 20);
-                  const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
-                  localStorage.setItem(key, JSON.stringify(newHistory));
+                    mermaidChart: localMermaidChart,
+                    cache_key: targetKey
+                  };
+                  const filtered = prev.filter(item => {
+                    if (targetKey && item.cache_key) {
+                      return item.cache_key !== targetKey;
+                    }
+                    return item.query !== searchStr;
+                  });
+                  const newHistory = [newItem, ...filtered].slice(0, 20);
+                  if (!session) {
+                    const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
+                    localStorage.setItem(key, JSON.stringify(newHistory));
+                  }
                   return newHistory;
                 });
+
+                // Refresh credits
+                if (session) {
+                  fetchProfile(session, null);
+                } else if (guestUUID) {
+                  fetchProfile(null, guestUUID);
+                }
                 
                 // Stop printer and play stamp
                 if (isElderlyMode) {
@@ -596,9 +872,18 @@ export default function App() {
       const formData = new FormData();
       if (q.trim()) formData.append('query', q);
       files.forEach(f => formData.append('files', f));
+      formData.append('isElderlyMode', String(isElderlyMode));
       
+      const headers: any = {};
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      } else if (guestUUID) {
+        headers['x-guest-uuid'] = guestUUID;
+      }
+
       const checkRes = await fetch('/api/check-cache', {
         method: 'POST',
+        headers: headers,
         body: formData
       });
       
@@ -644,16 +929,45 @@ export default function App() {
     
     setHistory(prev => {
       const timeStr = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }).replace(/\//g, '-');
-      const newHistory = [{ 
+      const targetKey = cachedResult.cache_key || cachedResult.id?.toString() || "";
+      const newItem = { 
         query: displayQuery, 
         status: cachedResult.status, 
         time: timeStr,
         steps: Array.isArray(cachedResult.steps) ? cachedResult.steps : [],
         result: finalResultObj,
-        mermaidChart: cachedResult.mermaid_chart || ""
-      }, ...prev].slice(0, 20);
-      const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
-      localStorage.setItem(key, JSON.stringify(newHistory));
+        mermaidChart: cachedResult.mermaid_chart || "",
+        cache_key: targetKey
+      };
+      const filtered = prev.filter(item => {
+        if (targetKey && item.cache_key) {
+          return item.cache_key !== targetKey;
+        }
+        return item.query !== displayQuery;
+      });
+      const newHistory = [newItem, ...filtered].slice(0, 20);
+      if (!session) {
+        const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
+        localStorage.setItem(key, JSON.stringify(newHistory));
+      } else {
+        // Upsert to user_history on cache load with latest snapshot
+        supabase.from('user_history').upsert({
+          user_id: session.user.id,
+          query: displayQuery,
+          status: cachedResult.status,
+          time: timeStr,
+          cache_key: targetKey,
+          content: cachedResult.content,
+          elderly_content: cachedResult.elderly_content || null,
+          latex_poster: cachedResult.latex_poster || null,
+          mermaid_chart: cachedResult.mermaid_chart || null,
+          steps: Array.isArray(cachedResult.steps) ? cachedResult.steps : [],
+          image_url: cachedResult.image_url || null,
+          created_at: new Date().toISOString()
+        }, { onConflict: 'user_id,cache_key' }).then(({ error }) => {
+          if (error) console.error('Failed to save cloud history on cache hit:', error);
+        });
+      }
       return newHistory;
     });
     
@@ -671,10 +985,10 @@ export default function App() {
   };
 
   const loadFromHistory = (h: any) => {
-    if (h.result && h.steps) {
+    if (h.result) {
       setQuery(h.query);
       setResult(h.result);
-      setWorkflowSteps(h.steps);
+      setWorkflowSteps(Array.isArray(h.steps) ? h.steps : []);
       setMermaidChart(h.mermaidChart || "");
       setAppState("result");
     } else {
@@ -682,12 +996,30 @@ export default function App() {
     }
   };
 
-  const deleteHistoryItem = (indexToDelete: number, e: React.MouseEvent) => {
+  const deleteHistoryItem = async (indexToDelete: number, e: React.MouseEvent) => {
     e.stopPropagation();
+    const item = history[indexToDelete];
+    if (session && item.cache_key) {
+      try {
+        await fetch('/api/user/history/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ cacheKey: item.cache_key })
+        });
+      } catch (err) {
+        console.error('Failed to delete history item on server:', err);
+      }
+    }
+    
     setHistory(prev => {
       const newHistory = prev.filter((_, idx) => idx !== indexToDelete);
-      const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
-      localStorage.setItem(key, JSON.stringify(newHistory));
+      if (!session) {
+        const key = isElderlyMode ? 'terminator_history_elderly' : 'terminator_history_normal';
+        localStorage.setItem(key, JSON.stringify(newHistory));
+      }
       return newHistory;
     });
   };
@@ -708,16 +1040,89 @@ export default function App() {
       {/* Background grain texture for "paper/sand" feel (optional) */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
 
-      {/* Elderly Mode Toggle */}
+      {/* Top Header Controls (Auth & Elderly Mode Toggle) */}
       {appState === "initial" && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
-          <span className="text-xs sm:text-sm font-medium opacity-60">👴 长辈模式</span>
-          <button 
-            onClick={() => setIsElderlyMode(!isElderlyMode)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${isElderlyMode ? 'bg-[#00B86B]' : 'bg-[#d0ccc4]'}`}
-          >
-            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform shadow-sm ${isElderlyMode ? 'translate-x-6' : 'translate-x-0.5'}`} />
-          </button>
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-white/20 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/30 shadow-sm">
+          {/* User Profile / Auth Area */}
+          <div className="flex items-center gap-2 border-r border-[#d0ccc4]/30 pr-3">
+            {credits !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (session) {
+                    setIsRechargeModalOpen(true);
+                  } else {
+                    setIsLoginModalOpen(true);
+                  }
+                }}
+                title={session ? "充值额度" : "登录获取额度"}
+                className={`text-xs font-mono px-2 py-0.5 rounded-full cursor-pointer hover:scale-105 transition-transform border-none ${
+                  credits <= 1 
+                    ? "bg-red-500/10 text-red-600 font-bold" 
+                    : (isElderlyMode ? "bg-[#00B86B]/15 text-[#00663C] text-sm font-bold" : "bg-[#A96159]/10 text-[#A96159]")
+                }`}
+              >
+                {isElderlyMode ? `可用额度: ${credits} 次` : `${credits} credits`}
+                <span className="ml-1 opacity-75 font-sans font-bold">+</span>
+              </button>
+            )}
+
+            {session ? (
+              <div className="flex items-center gap-2">
+                <span 
+                  className={`text-xs font-bold truncate max-w-[120px] ${isElderlyMode ? 'text-black text-sm' : 'text-[#2C2C2C]/80'}`} 
+                  title={session.user.email}
+                >
+                  {session.user.email?.split('@')[0]}
+                </span>
+                
+                {/* Check-in Button */}
+                {lastCheckIn !== new Date().toLocaleDateString('sv') ? (
+                  <button
+                    onClick={handleCheckIn}
+                    className={`px-2 py-0.5 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                      isElderlyMode 
+                        ? "bg-[#00B86B] text-white hover:bg-[#009E5B]" 
+                        : "bg-[#A96159] text-white hover:bg-[#8e4f48]"
+                    }`}
+                  >
+                    签到 (+3)
+                  </button>
+                ) : (
+                  <span className="text-[10px] opacity-40 font-mono">已签到</span>
+                )}
+
+                <button
+                  onClick={handleSignOut}
+                  className={`text-xs opacity-50 hover:opacity-100 cursor-pointer underline transition-opacity ${isElderlyMode ? 'text-black text-sm font-bold' : ''}`}
+                >
+                  退出
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                className={`text-xs font-bold hover:underline cursor-pointer ${
+                  isElderlyMode 
+                    ? "text-black text-lg font-black bg-black/5 px-3 py-1 rounded-lg border border-black/10" 
+                    : "text-[#A96159] hover:text-[#8e4f48]"
+                }`}
+              >
+                登录 / 注册
+              </button>
+            )}
+          </div>
+
+          {/* Elderly Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <span className={`font-bold opacity-60 ${isElderlyMode ? 'text-lg text-black' : 'text-xs'}`}>👴 长辈</span>
+            <button 
+              onClick={() => setIsElderlyMode(!isElderlyMode)}
+              className={`w-10 h-5 rounded-full transition-colors relative flex items-center ${isElderlyMode ? 'bg-[#00B86B]' : 'bg-[#d0ccc4]'}`}
+            >
+              <div className={`w-4 h-4 bg-white rounded-full absolute transition-transform shadow-sm ${isElderlyMode ? 'left-[22px]' : 'left-[2px]'}`} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -1240,10 +1645,16 @@ export default function App() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#FAF8F5] border border-[#d0ccc4]/50 rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl flex flex-col gap-5 text-left"
+              className={`rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl flex flex-col gap-5 text-left relative ${
+                isElderlyMode 
+                  ? "bg-white border-4 border-black text-black" 
+                  : "bg-[#FAF8F5] border border-[#d0ccc4]/50 text-[#2C2C2C]"
+              }`}
             >
-              <div className="flex justify-between items-center border-b border-[#d0ccc4]/30 pb-3">
-                <h3 className="text-lg font-bold text-[#2C2C2C] flex items-center gap-2">
+              <div className={`flex justify-between items-center pb-3 ${
+                isElderlyMode ? "border-b-2 border-black/10" : "border-b border-[#d0ccc4]/30"
+              }`}>
+                <h3 className={isElderlyMode ? "text-2xl sm:text-3xl font-black text-black flex items-center gap-2" : "text-lg font-bold text-[#2C2C2C] flex items-center gap-2"}>
                   🔍 发现已有核查报告
                 </h3>
                 <button 
@@ -1252,39 +1663,192 @@ export default function App() {
                     setCacheModalOpen(false);
                     resetState();
                   }}
-                  className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center font-bold text-[#2C2C2C]/50 cursor-pointer border-none"
+                  className={`rounded-full flex items-center justify-center font-bold cursor-pointer border-none transition-colors ${
+                    isElderlyMode 
+                      ? "w-10 h-10 bg-black/10 hover:bg-black/20 text-black text-xl" 
+                      : "w-8 h-8 bg-black/5 hover:bg-black/10 text-[#2C2C2C]/50"
+                  }`}
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="text-sm text-[#2C2C2C]/80 leading-relaxed">
-                系统检测到数据库中已存有针对该谣言的深度分析报告。直接查看可免去大约 1-2 分钟的智能体研判过程。
+              <div className={isElderlyMode ? "text-xl font-bold text-gray-800 leading-relaxed" : "text-sm text-[#2C2C2C]/80 leading-relaxed"}>
+                {isElderlyMode 
+                  ? "系统已为您找到针对该内容的安心核查报告，点击下方绿色按钮可直接秒开查看结果！" 
+                  : "系统检测到数据库中已存有针对该谣言的深度分析报告。直接查看可免去大约 1-2 分钟的智能体研判过程。"}
               </div>
 
-              <div className="bg-[#FAF8F5] border border-[#d0ccc4]/30 rounded-xl p-3 text-xs text-[#2C2C2C]/70">
-                <div className="font-bold mb-1">谣言文本：</div>
-                <div className="line-clamp-3 italic">“{pendingQuery || "多媒体附件核查"}”</div>
+              <div className={`rounded-2xl p-4 ${
+                isElderlyMode 
+                  ? "bg-amber-50 border-2 border-amber-300 text-amber-950 font-bold text-base" 
+                  : "bg-[#FAF8F5] border border-[#d0ccc4]/30 text-xs text-[#2C2C2C]/70"
+              }`}>
+                <div className={isElderlyMode ? "font-black text-amber-900 mb-1.5 text-lg" : "font-bold mb-1"}>核查内容：</div>
+                <div className={isElderlyMode ? "line-clamp-3 text-lg leading-snug" : "line-clamp-3 italic"}>“{pendingQuery || "多媒体附件核查"}”</div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 mt-2">
                 <button
                   type="button"
                   onClick={handleRegenerateReport}
-                  className="flex-grow py-3 text-sm border border-[#d0ccc4]/80 text-[#2C2C2C]/70 hover:bg-[#FAF8F5] hover:text-[#2C2C2C] rounded-xl font-medium cursor-pointer transition-all bg-white"
+                  className={`flex-grow py-3.5 rounded-2xl font-bold cursor-pointer transition-all ${
+                    isElderlyMode 
+                      ? "text-xl border-2 border-black text-black bg-white hover:bg-gray-100" 
+                      : "text-sm border border-[#d0ccc4]/80 text-[#2C2C2C]/70 hover:bg-[#FAF8F5] hover:text-[#2C2C2C] bg-white rounded-xl font-medium"
+                  }`}
                 >
-                  重新生成报告
+                  {isElderlyMode ? "重新核查一次" : "重新生成报告"}
                 </button>
                 <button
                   type="button"
                   onClick={handleLoadCachedReport}
-                  className="flex-grow py-3 text-sm bg-[#A96159] hover:bg-[#8e4f48] text-white rounded-xl font-medium shadow-sm cursor-pointer transition-all border-none"
+                  className={`flex-grow py-3.5 rounded-2xl font-bold shadow-md cursor-pointer transition-all border-none flex items-center justify-center gap-1.5 ${
+                    isElderlyMode 
+                      ? "text-2xl bg-green-600 hover:bg-green-700 text-white" 
+                      : "text-sm bg-[#A96159] hover:bg-[#8e4f48] text-white rounded-xl font-medium"
+                  }`}
                 >
-                  直接查看报告
+                  <span>{isElderlyMode ? "直接看报告 ➔" : "直接查看报告"}</span>
                 </button>
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Credit Exhausted Warning Modal */}
+      <AnimatePresence>
+        {creditAlertOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`border rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl flex flex-col gap-5 text-left ${
+                isElderlyMode 
+                  ? "bg-white border-black border-4 text-black" 
+                  : "bg-[#FAF8F5] border-[#d0ccc4]/50 text-[#2C2C2C]"
+              }`}
+            >
+              <div className="flex justify-between items-center border-b border-[#d0ccc4]/30 pb-3">
+                <h3 className={`font-bold flex items-center gap-2 ${isElderlyMode ? 'text-2xl text-black' : 'text-lg text-[#2C2C2C]'}`}>
+                  ⚠️ 核查额度不足
+                </h3>
+                <button 
+                  type="button" 
+                  onClick={() => setCreditAlertOpen(false)}
+                  className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center font-bold cursor-pointer border-none"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className={`leading-relaxed ${isElderlyMode ? 'text-xl font-bold text-black' : 'text-sm text-[#2C2C2C]/80'}`}>
+                {creditAlertMsg}
+              </div>
+
+              <div className="flex gap-3 mt-3">
+                {!session ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setCreditAlertOpen(false)}
+                      className={`flex-grow py-3 border rounded-xl font-medium cursor-pointer transition-all bg-white text-center ${
+                        isElderlyMode ? 'text-lg border-black text-black' : 'text-sm border-[#d0ccc4]/80 text-[#2C2C2C]/70'
+                      }`}
+                    >
+                      返回
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreditAlertOpen(false);
+                        setIsLoginModalOpen(true);
+                      }}
+                      className={`flex-grow py-3 text-white rounded-xl font-medium shadow-sm cursor-pointer transition-all border-none text-center ${
+                        isElderlyMode ? 'bg-[#00B86B] hover:bg-[#009E5B] text-lg' : 'bg-[#A96159] hover:bg-[#8e4f48] text-sm'
+                      }`}
+                    >
+                      登录 / 注册
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setCreditAlertOpen(false)}
+                    className={`w-full py-3 text-white rounded-xl font-medium shadow-sm cursor-pointer transition-all border-none text-center ${
+                      isElderlyMode ? 'bg-[#00B86B] hover:bg-[#009E5B] text-lg' : 'bg-[#A96159] hover:bg-[#8e4f48] text-sm'
+                    }`}
+                  >
+                    我知道了
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Supabase Registration & Login Modal */}
+      <AnimatePresence>
+        {isLoginModalOpen && (
+          <LoginModal
+            isOpen={isLoginModalOpen}
+            onClose={() => setIsLoginModalOpen(false)}
+            onAuthSuccess={handleAuthSuccess}
+            isElderlyMode={isElderlyMode}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Credit Recharge Modal */}
+      <AnimatePresence>
+        {isRechargeModalOpen && (
+          <RechargeModal
+            isOpen={isRechargeModalOpen}
+            onClose={() => setIsRechargeModalOpen(false)}
+            onCheckInClick={handleCheckIn}
+            isElderlyMode={isElderlyMode}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Global Sync / Loading Screen */}
+      <AnimatePresence>
+        {isSyncing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`rounded-3xl p-8 flex flex-col items-center gap-5 shadow-2xl max-w-sm w-full text-center ${
+                isElderlyMode 
+                  ? "bg-white border-4 border-black text-black" 
+                  : "bg-[#FAF8F5] border border-[#d0ccc4]/60 text-[#2C2C2C]"
+              }`}
+            >
+              <div className="relative flex items-center justify-center">
+                <div className={`w-14 h-14 rounded-full border-4 animate-spin ${
+                  isElderlyMode ? "border-green-600 border-t-transparent" : "border-[#A96159] border-t-transparent"
+                }`} />
+                <span className="absolute text-xl">⏳</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <h3 className={isElderlyMode ? "text-2xl font-black text-black" : "text-base font-bold text-[#2C2C2C]"}>
+                  数据同步中
+                </h3>
+                <p className={isElderlyMode ? "text-lg font-bold text-gray-700" : "text-xs text-[#2C2C2C]/70"}>
+                  {syncLoadingMsg}
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

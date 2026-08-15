@@ -72,33 +72,35 @@ const LatexRenderer = ({ latex }: { latex: string }) => {
 
   const updateScale = () => {
     if (containerRef.current && wrapperRef.current) {
-      const targetEl = containerRef.current.querySelector('.katex-display') as HTMLElement;
+      const container = containerRef.current;
+      const wrapper = wrapperRef.current;
+      const targetEl = (container.querySelector('.katex-html') || 
+                        container.querySelector('.katex-display') || 
+                        container.querySelector('.katex') || 
+                        container.firstElementChild) as HTMLElement;
       if (targetEl) {
+        // Reset base font size to 16px to measure natural dimensions
+        container.style.fontSize = '16px';
+        container.style.transform = 'none';
+
         requestAnimationFrame(() => {
-          if (!wrapperRef.current || !containerRef.current) return;
+          if (!container || !wrapper) return;
           
-          const container = containerRef.current;
-          const wrapper = wrapperRef.current;
+          const availWidth = wrapper.clientWidth > 0 ? wrapper.clientWidth - 8 : 460;
+          // Available height inside modal so it fits on screen without scrollbars
+          const availHeight = Math.max(260, window.innerHeight * 0.52);
           
-          // Batch resets and reads in the same frame to prevent layout thrashing and visual flicker
-          container.style.fontSize = '16px';
-          targetEl.style.transform = 'none';
-          targetEl.style.width = 'auto';
-          targetEl.style.display = 'block';
-          targetEl.style.margin = '0';
+          const naturalWidth = targetEl.scrollWidth || targetEl.offsetWidth || 1;
+          const naturalHeight = targetEl.scrollHeight || targetEl.offsetHeight || 1;
           
-          // Measure values immediately after write in the animation frame
-          const parentWidth = wrapper.clientWidth - 16;
-          const elementWidth = targetEl.scrollWidth || targetEl.offsetWidth;
+          // Calculate constraint ratio for both width and height
+          const ratioW = availWidth > 0 ? availWidth / naturalWidth : 1;
+          const ratioH = availHeight > 0 ? availHeight / naturalHeight : 1;
+          const ratio = Math.min(ratioW, ratioH, 1.0);
           
-          if (elementWidth > parentWidth && parentWidth > 0) {
-            const ratio = parentWidth / elementWidth;
-            // Let the font size scale down dynamically to fit smaller screens (min 6px font size)
-            const newFontSize = Math.max(6, Math.floor(16 * ratio));
-            container.style.fontSize = `${newFontSize}px`;
-          } else {
-            container.style.fontSize = '16px';
-          }
+          // Compute optimal font size (between 8px and 16px)
+          const optimalFontSize = Math.max(8.0, Math.floor(16 * ratio * 10) / 10);
+          container.style.fontSize = `${optimalFontSize}px`;
         });
       }
     }
@@ -150,11 +152,11 @@ const LatexRenderer = ({ latex }: { latex: string }) => {
   return (
     <div 
       ref={wrapperRef} 
-      className="w-full flex justify-center items-start overflow-hidden px-4"
+      className="w-full flex justify-center items-center overflow-visible py-0.5"
     >
       <div 
         ref={containerRef} 
-        className="latex-render-container w-full overflow-hidden py-2 text-center flex justify-center" 
+        className="latex-render-container w-full overflow-visible py-0.5 text-center flex justify-center" 
         style={{ fontSize: '16px' }}
       />
     </div>
@@ -205,6 +207,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
   const [posterImageUrl, setPosterImageUrl] = useState<string | null>(null);
   const [canShareNativePoster, setCanShareNativePoster] = useState(false);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
+  const [isMermaidError, setIsMermaidError] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
 
   // Component mount tracking
@@ -299,23 +302,33 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPosterModalOpen]);
 
-  // Generate poster image blob dynamically on demand
+  // Generate fresh poster image blob dynamically on demand
   const generatePosterImage = async (): Promise<Blob | null> => {
-    if (posterImageBlob) return posterImageBlob;
     if (!posterRef.current) return null;
     
     setIsPosterSaving(true);
     try {
-      // Use html-to-image to generate the blob of the poster card
-      const blob = await toBlob(posterRef.current, {
+      const el = posterRef.current;
+      const rect = el.getBoundingClientRect();
+      const width = Math.ceil(rect.width);
+      const height = Math.ceil(rect.height);
+
+      // Use html-to-image to generate the blob of the poster card with exact boundary dimensions
+      const blob = await toBlob(el, {
         backgroundColor: '#FAF8F5',
-        pixelRatio: 2.0, // High definition
-        skipFonts: true
+        pixelRatio: 2.5,
+        width: width,
+        height: height,
+        style: {
+          transform: 'none',
+          margin: '0',
+          width: `${width}px`,
+          height: `${height}px`,
+          overflow: 'visible'
+        }
       });
       if (blob) {
-        const url = URL.createObjectURL(blob);
         setPosterImageBlob(blob);
-        setPosterImageUrl(url);
         return blob;
       }
       return null;
@@ -330,46 +343,35 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
 
   const handleDirectDownloadPoster = async () => {
     try {
-      let blob = posterImageBlob;
-      let url = posterImageUrl;
-      if (!blob) {
-        blob = await generatePosterImage();
-        if (blob) {
-          url = URL.createObjectURL(blob);
-        }
-      }
-      if (!url) return;
+      const blob = await generatePosterImage();
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = `避谣大字报_${new Date().getTime()}.png`;
       link.href = url;
       link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 6000);
     } catch (e) {
       console.error("下载失败", e);
-      alert("下载大字报失败，请长按图片保存。");
+      alert("下载大字报失败，请重试。");
     }
   };
 
   const handleCopyToClipboardPoster = async () => {
     try {
-      let blob = posterImageBlob;
-      if (!blob) {
-        blob = await generatePosterImage();
-      }
+      const blob = await generatePosterImage();
       if (!blob) return;
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       alert('大字报图片已成功复制到剪贴板，您可以直接粘贴发送！');
     } catch (e) {
       console.error("复制失败", e);
-      alert("您的浏览器不支持直接复制图片，请长按/另存图片。");
+      alert("您的浏览器不支持直接复制图片，请稍后重试。");
     }
   };
 
   const handleNativeSharePoster = async () => {
     try {
-      let blob = posterImageBlob;
-      if (!blob) {
-        blob = await generatePosterImage();
-      }
+      const blob = await generatePosterImage();
       if (!blob) return;
       const file = new File([blob], `避谣大字报_${new Date().getTime()}.png`, { type: 'image/png' });
       await navigator.share({
@@ -837,7 +839,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             </div>
           </div>
           
-          {mermaidChart && (
+          {mermaidChart && !isMermaidError && (
             <div className="mt-8 w-full max-w-4xl mx-auto px-4">
               <div className="flex items-center mb-6">
                 <div className="flex-1 h-px bg-[#d0ccc4]"></div>
@@ -846,7 +848,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
                 </div>
                 <div className="flex-1 h-px bg-[#d0ccc4]"></div>
               </div>
-              <MermaidChart chart={mermaidChart} />
+              <MermaidChart chart={mermaidChart} onError={() => setIsMermaidError(true)} />
             </div>
           )}
 
@@ -944,7 +946,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
             </button>
 
             <button 
-              onClick={startSpeech}
+              onClick={() => startSpeech()}
               disabled={ttsState === 'loading'}
               className={`p-1.5 sm:p-2 bg-black/5 text-black hover:bg-black/10 rounded-lg sm:rounded-xl text-sm sm:text-base font-bold cursor-pointer border-none flex-shrink-0 ${ttsState === 'loading' ? 'opacity-50 cursor-not-allowed' : ''}`}
               title="从头重新播报"
@@ -1021,10 +1023,13 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
 
       {/* LaTeX Poster Share Modal */}
       {isPosterModalOpen && result.latexPoster && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-          <div ref={posterModalRef} className="bg-[#FAF8F5] rounded-3xl p-6 w-full max-w-2xl shadow-2xl flex flex-col gap-4 border border-black/10 max-h-[95vh] overflow-hidden">
-            <div className="flex justify-between items-center border-b border-dashed border-[#d0ccc4] pb-3">
-              <span className="text-lg font-bold text-[#2C2C2C]">生成辟谣大字报</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md overflow-y-auto">
+          <div 
+            ref={posterModalRef} 
+            className="bg-[#FAF8F5] rounded-3xl p-5 sm:p-6 w-full max-w-xl shadow-2xl flex flex-col gap-3.5 border border-black/10 max-h-[92vh] my-auto"
+          >
+            <div className="flex justify-between items-center border-b border-dashed border-[#d0ccc4] pb-2.5 flex-shrink-0">
+              <span className="text-base sm:text-lg font-bold text-[#2C2C2C]">生成辟谣大字报</span>
               <button 
                 onClick={() => {
                   setIsPosterModalOpen(false);
@@ -1032,23 +1037,23 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
                   setPosterImageBlob(null);
                 }}
                 aria-label="关闭弹窗"
-                className="w-11 h-11 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 cursor-pointer border-none text-[#2C2C2C]"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 cursor-pointer border-none text-[#2C2C2C]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Scrollable Container */}
-            <div className="flex-1 overflow-y-auto pr-1 flex flex-col items-center gap-6 py-2">
-              {/* Rendered Poster Container - Adaptive dimension wrapper */}
-              <div className="w-full overflow-hidden flex justify-center py-2">
+            {/* Scrollable Center Content with smooth scrollbar */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1 flex flex-col items-center gap-3 py-1">
+              {/* Poster Card Container - Strictly wraps full text with red border */}
+              <div className="w-full flex justify-center py-1">
                 <div 
                   ref={posterRef}
-                  className="w-[540px] max-w-full bg-[#FAF8F5] border-[6px] sm:border-[12px] border-[#C21E17] rounded-xl p-4 sm:p-8 shadow-md flex flex-col items-center text-center relative flex-shrink-0 overflow-hidden"
+                  className="w-full max-w-[500px] bg-[#FAF8F5] border-[6px] sm:border-[8px] border-[#C21E17] rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col items-center justify-center text-center relative flex-shrink-0 box-border"
                   style={{ fontFamily: 'SimSun, STSong, "PingFang SC", sans-serif' }}
                 >
                   {/* Visual decorations for the traditional notice board */}
-                  <div className="absolute top-2 left-2 right-2 bottom-2 border border-dashed border-[#C21E17]/30 pointer-events-none rounded" />
+                  <div className="absolute top-2 left-2 right-2 bottom-2 sm:top-2.5 sm:left-2.5 sm:right-2.5 sm:bottom-2.5 border border-dashed border-[#C21E17]/25 pointer-events-none rounded-xl" />
                   
                   {/* Render the KaTeX formula */}
                   <LatexRenderer latex={sanitizeLatex(result.latexPoster)} />
@@ -1056,32 +1061,32 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               </div>
 
               {/* Explanations */}
-              <div className="text-center space-y-1">
-                <p className="text-sm font-bold text-black/80">
-                  🏮 大字报已生成！特别针对长辈视力优化，字大易读。
+              <div className="text-center space-y-0.5 mt-1 flex-shrink-0">
+                <p className="text-xs sm:text-sm font-bold text-black/80">
+                  🏮 大字报已生成！特别针对长辈视力优化，大字易读。
                 </p>
-                <p className="text-xs text-black/70">
+                <p className="text-[11px] sm:text-xs text-black/60">
                   点击下方按钮可直接保存到相册、复制或发送给家人。
                 </p>
               </div>
             </div>
 
-            {/* Poster Actions */}
-            <div className="flex gap-3 pt-2 border-t border-dashed border-[#d0ccc4]">
+            {/* Poster Actions (Always visible at the bottom of the card) */}
+            <div className="flex gap-2.5 pt-2.5 border-t border-dashed border-[#d0ccc4] flex-shrink-0">
               {canShareNativePoster && (
                 <button
                   onClick={handleNativeSharePoster}
                   disabled={isPosterSaving}
-                  className="flex-1 py-3 rounded-full bg-verified-dark text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-verified cursor-pointer border-none disabled:opacity-50"
+                  className="flex-1 py-2.5 sm:py-3 rounded-full bg-verified-dark text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-verified cursor-pointer border-none disabled:opacity-50"
                 >
                   <Share2 className="w-4 h-4" />
-                  发送给朋友
+                  发送朋友
                 </button>
               )}
               <button
                 onClick={handleCopyToClipboardPoster}
                 disabled={isPosterSaving}
-                className="flex-1 py-3 rounded-full bg-black/5 text-[#2C2C2C] text-sm font-bold flex items-center justify-center gap-2 hover:bg-black/10 cursor-pointer border-none disabled:opacity-50"
+                className="flex-1 py-2.5 sm:py-3 rounded-full bg-black/5 text-[#2C2C2C] text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-black/10 cursor-pointer border-none disabled:opacity-50"
               >
                 <ClipboardCopy className="w-4 h-4" />
                 {isPosterSaving ? "生成中..." : "复制图片"}
@@ -1089,7 +1094,7 @@ export default function ResultTicket({ result, onReviewWorkflow, isElderlyMode =
               <button
                 onClick={handleDirectDownloadPoster}
                 disabled={isPosterSaving}
-                className="flex-1 py-3 rounded-full bg-[#2C2C2C] text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-black cursor-pointer border-none disabled:opacity-50"
+                className="flex-1 py-2.5 sm:py-3 rounded-full bg-[#2C2C2C] text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-black cursor-pointer border-none disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
                 {isPosterSaving ? "生成中..." : "下载大字报"}
