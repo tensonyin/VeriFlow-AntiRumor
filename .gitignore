@@ -40,5 +40,7 @@ release_gcp.zip
 # Office temporary files
 ~$*
 
-# Competition submission files
+# Competition submission & process docs (Local only)
 提交文件/
+docs/
+PROJECT_PROCESS.md

@@ -5,9 +5,8 @@
 [![Dify Workflow](https://img.shields.io/badge/Dify-23%20Nodes-orange.svg?style=flat-square)](https://dify.ai/)
 [![Database](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg?style=flat-square)](https://supabase.com/)
 [![Hardware Platform](https://img.shields.io/badge/Hardware-DFRobot%20Unihiker-blueviolet.svg?style=flat-square)](https://www.unihiker.com/)
-[![Competition Category](https://img.shields.io/badge/专项赛-AI智能体设计开发-red.svg?style=flat-square)](#)
 
-面向 AI 时代多源虚假信息的智能事实核查与适老化辟谣系统。本项目专为**第九届全国青少年人工智能创新挑战赛 - “AI智能体设计开发专项赛”**决赛路演及成果交付研发。
+面向 AI 时代多源虚假信息的智能事实核查与适老化辟谣系统。
 
 ---
 
@@ -109,11 +108,6 @@ graph TD
 ├── dify_workflows/         # Dify 智能体工作流配置文件
 │   ├── 谣言终结者：基于多源异构对抗博弈的多模态事实核查系统 - Dify.html # 工作流静态看板
 │   └── 谣言终结者：基于多源异构对抗博弈的多模态事实核查系统 (12).yml # 23节点工作流配置文件
-├── docs/                   # 比赛全套交付文档、自查报告与答辩指南
-│   ├── 谣言终结者_5分钟决赛答辩汇报与评委问答指南.md # 决赛5分钟路演+2分钟问答指南
-│   ├── 谣言终结者_3分钟答辩汇报与评委问答指南.md # 3分钟路演指南
-│   ├── AI智能体设计开发专项赛_评分指标对照自查报告.md # 官方指标对照自查表
-│   └── development_report.md # 深度开发与技术报告
 ├── scripts/                # 辅助开发、文本解析与数据抽取 Python 脚本
 ├── src/                    # React 19 前端源码
 │   ├── components/         # UI 核心组件
@@ -132,9 +126,8 @@ graph TD
 │   └── schema.sql          # Supabase PostgreSQL 完整数据表结构定义
 ├── unihiker_app.py         # 行空板物理程序（支持无硬件自适应 PC 高保真模拟器）
 ├── Dockerfile              # 远程云服务器 Docker 镜像编译配置文件
-├── PROJECT_PROCESS.md      # 项目过程性文件与开发纪实 (本仓库主线文档)
 ├── package.json            # 依赖与打包指令
-└── README.md               # 项目快速启动与演示文档 (本文档)
+└── README.md               # 项目快速启动与说明文档 (本文档)
 ```
 
 ---
@@ -194,9 +187,9 @@ python unihiker_app.py
 
 ---
 
-## 🎓 比赛路演快捷演示 (Ctrl+Alt+T 免 Token 演示模式)
+## 🎓 离线演示与免 Token 模拟模式 (Ctrl+Alt+T 模拟演练模式)
 
-为了让评委老师在**无网络**或**无大模型 Token 消耗**的情况下快速体验本系统所有的交互细节（尤其是长辈模式、打字机打字特效、盖章物理反馈、小票截屏分享），我们在前端中预留了与真实 Dify 接口调用流程**完全一致**的**“快速路演通道”**：
+为了在**无网络**或**无大模型 Token 消耗**的情况下快速体验本系统所有的交互细节（尤其是长辈模式、打字机打字特效、盖章物理反馈、小票截屏分享），我们在前端中预留了与真实 Dify 接口调用流程**完全一致**的**“快速演示通道”**：
 
 1. 打开网页 `http://localhost:3000`。
 2. 保持键盘处于英文状态，同时按下 **`Ctrl + Alt + T`** 组合键。
@@ -205,12 +198,6 @@ python unihiker_app.py
 
 ---
 
-## 📚 比赛关键交付文档索引 (Documentation Index)
+## 📄 开源许可证 (License)
 
-如果您需要深入研究本项目的工程实现和比赛评分对照，请点击以下链接阅读：
-
-- 🏆 **决赛答辩指南**：[谣言终结者_5分钟决赛答辩汇报与评委问答指南.md](./docs/谣言终结者_5分钟决赛答辩汇报与评委问答指南.md) —— *5分钟路演答辩文稿 + 2分钟高维评委问答策略库。*
-- 📋 **评分对照自查**：[AI智能体设计开发专项赛_评分指标对照自查报告.md](./docs/AI智能体设计开发专项赛_评分指标对照自查报告.md) —— *严格对照官方手册，梳理全部高分得分点。*
-- 📖 **技术实践报告**：[项目开发与技术实践报告.md](./docs/development_report.md) —— *深度解析 23 节点工作流、CORS 污染、SSE、Mermaid交互等方案。*
-- 🎬 **汇报视频脚本**：[汇报视频配音与交互脚本.md](./docs/谣言终结者_汇报视频脚本.md) —— *层层递进的高保真路演视频配音文案与音效设计。*
-- 📝 **全流程开发纪实**：[项目开发纪实与技术困难解决方案.md](./PROJECT_PROCESS.md) —— *记录本项目从 0 到 1 的开发过程与采坑解决方案。*
+本项目基于 [MIT License](https://opensource.org/licenses/MIT) 开源。
